@@ -77,6 +77,7 @@ class AMPTGenesis
                             std::vector<double>&, //piyn
                             std::vector<double>&, //pinn
                             std::vector<double>&, //Pi
+                            double &, //tau
                             std::vector<double>&, //rho_b
                             std::vector<double>&, //q_0
                             std::vector<double>&, //q_1
@@ -112,6 +113,7 @@ void AMPTGenesis::output_to_vectors(std::vector<double> &energy_density_out,
                                         std::vector<double> &piyn_out,
                                         std::vector<double> &pinn_out,
                                         std::vector<double> &Pi_out,
+                                        double &tau_hydro,
                                         std::vector<double> &rho_b_out,
                                         std::vector<double> &q0_out,
                                         std::vector<double> &q1_out,
@@ -134,6 +136,7 @@ void AMPTGenesis::output_to_vectors(std::vector<double> &energy_density_out,
     piyn_out = final_piyn;
     pinn_out = final_pinn;
     Pi_out = final_Pi;
+    tau_hydro = tau_LandauMatch;
     rho_b_out = final_rhob;
     q0_out = final_q0;
     q1_out = final_q1;
