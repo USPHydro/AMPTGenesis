@@ -518,13 +518,13 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
         Vec3 pos0({x0,y0,eta0});
 
         //Constraint search for a cube in a range 8*sigma_r and 8*sigma_eta
-        double min_ix = std::max<double>(floor( (x0-rxy*100.*_sigma_r+Lx/2)/dx ), .0);
-        double min_iy = std::max<double>(floor( (y0-rxy*100.*_sigma_r+Ly/2)/dy ), .0);
-        double min_ieta = std::max<double>(floor( (eta0-reta*100.*_sigma_eta+Leta/2)/deta ), .0);
+        double min_ix = std::max<double>(floor( (x0-rxy*25.*_sigma_r+Lx/2)/dx ), .0);
+        double min_iy = std::max<double>(floor( (y0-rxy*25.*_sigma_r+Ly/2)/dy ), .0);
+        double min_ieta = std::max<double>(floor( (eta0-reta*25.*_sigma_eta+Leta/2)/deta ), .0);
 
-        double max_ix = std::min<double>(ceil( (x0+rxy*100.*_sigma_r+Lx/2)/dx ), nx-1);
-        double max_iy = std::min<double>(ceil( (y0+rxy*100.*_sigma_r+Ly/2)/dy ), ny-1);
-        double max_ieta = std::min<double>(ceil( (eta0+reta*100.*_sigma_eta+Leta/2)/deta), neta-1);
+        double max_ix = std::min<double>(ceil( (x0+rxy*25.*_sigma_r+Lx/2)/dx ), nx-1);
+        double max_iy = std::min<double>(ceil( (y0+rxy*25.*_sigma_r+Ly/2)/dy ), ny-1);
+        double max_ieta = std::min<double>(ceil( (eta0+reta*25.*_sigma_eta+Leta/2)/deta), neta-1);
 
         for (int ix=min_ix; ix<=max_ix; ++ix){
             double x = ix*dx - Lx*.5;

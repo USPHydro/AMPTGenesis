@@ -21,7 +21,7 @@ class AMPTGenesis
         AMPTGenesis();
         ~AMPTGenesis();
         // Smearing time
-        float tau_LandauMatch;
+        double tau_LandauMatch;
 
         std::string input_folder_path;
         std::string output_file_path;
@@ -136,7 +136,7 @@ void AMPTGenesis::output_to_vectors(std::vector<double> &energy_density_out,
     piyn_out = final_piyn;
     pinn_out = final_pinn;
     Pi_out = final_Pi;
-    tau_hydro = tau_LandauMatch;
+    tau_hydro = tau0;
     rho_b_out = final_rhob;
     q0_out = final_q0;
     q1_out = final_q1;
