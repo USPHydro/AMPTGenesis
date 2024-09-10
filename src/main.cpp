@@ -33,9 +33,9 @@ po::variables_map get_input_parameters(int ac, char* av[]){
 
     po::options_description side_size("Physical size of the grid");
     side_size.add_options()
-        ("side_size.x,Lx", po::value<double>()->default_value(28), "set physical size in the x direction (in fm)")
-        ("side_size.y,Ly", po::value<double>()->default_value(28), "set physical size in the y direction (in fm)")
-        ("side_size.eta,Leta", po::value<double>()->default_value(12), "set physical size in the eta_s direction");
+        ("side_size.x,Lx", po::value<double>()->default_value(2), "set physical size in the x direction (in fm)")
+        ("side_size.y,Ly", po::value<double>()->default_value(2), "set physical size in the y direction (in fm)")
+        ("side_size.eta,Leta", po::value<double>()->default_value(2), "set physical size in the eta_s direction");
 
     po::options_description smearing("Smearing parton parameters");
     smearing.add_options()
@@ -53,7 +53,7 @@ po::variables_map get_input_parameters(int ac, char* av[]){
         //                     "path to AMPT initial parton positions")
         ("paths.input,input",po::value<std::string>()->default_value("/storage/home/kpala/usphydro_analysis/sources/AMPT/ana"),
                              "path where AMPT stored its results")
-        ("paths.output,ouput",po::value<std::string>()->default_value("./AMPT_smeared_ic.csv"),
+        ("paths.output,output",po::value<std::string>()->default_value("./AMPT_smeared_ic.csv"),
                              "path to store IC")
     ;
 
@@ -103,8 +103,8 @@ po::variables_map get_input_parameters(int ac, char* av[]){
 
 
 int main(int argc, char** argv){
+  std::unique_ptr<AMPTGenesis> genesis_ptr = std::make_unique<AMPTGenesis>();
   po::variables_map vm = get_input_parameters(argc, argv);
-
   genesis_ptr->output_file_path = vm["paths.output"].as<std::string>();
   genesis_ptr->input_folder_path = vm["paths.input"].as<std::string>() ;
   genesis_ptr->tau0 = vm["smearing.tau0"].as<double>();
@@ -119,9 +119,12 @@ int main(int argc, char** argv){
   genesis_ptr->sigma_eta = vm["smearing.sigma_eta"].as<double>(); 
   genesis_ptr->rxy = vm["sample_radius.xy"].as<double>(); 
   genesis_ptr->reta = vm["sample_radius.eta"].as<double>();
-  
+
   genesis_ptr->run_genesis();
+  std::cout << "Saving output to file...\n";
   genesis_ptr->output_to_file();
+  std::cout << "Output stored in: " << genesis_ptr->output_file_path << "\n";
+  return 0;
   
 
 }

@@ -40,6 +40,7 @@ private:
     int ncollisions;    ///< Number of parton-parton collision (do not confuse with Ncoll, the number of nucleon-nucleon collisions)
     std::vector<std::vector<PartonCollision>> parton_histories; ///< Collision history of each parton
     std::vector<PartonThermalized> thermalized_partons;
+    const double e_charge = 0.30282212077; ///< Elementary charge in natural units (sqrt(4*pi*alpha))
 
 public:
     double impact_parameter;  ///< Impact parameter of the event
@@ -65,6 +66,15 @@ public:
     boost::multi_array<double,3> j1;
     boost::multi_array<double,3> j2;
     boost::multi_array<double,3> j3;
+    boost::multi_array<double,3> j0e;
+    boost::multi_array<double,3> j1e;
+    boost::multi_array<double,3> j2e;
+    boost::multi_array<double,3> j3e;
+    boost::multi_array<double,3> j0s;
+    boost::multi_array<double,3> j1s;
+    boost::multi_array<double,3> j2s;
+    boost::multi_array<double,3> j3s;
+
 
     AMPTSmearer(std::string results_path, double K,int nx_, int ny_, int neta_, double Lx_,double Ly_, double Leta_,
                                 double sigma_r_, double sigma_eta_, double tau0_, double rxy_, double reta_);
@@ -126,6 +136,14 @@ j0(boost::extents[1][1][1]),
 j1(boost::extents[1][1][1]),
 j2(boost::extents[1][1][1]),
 j3(boost::extents[1][1][1]),
+j0e(boost::extents[1][1][1]),
+j1e(boost::extents[1][1][1]),
+j2e(boost::extents[1][1][1]),
+j3e(boost::extents[1][1][1]),
+j0s(boost::extents[1][1][1]),
+j1s(boost::extents[1][1][1]),
+j2s(boost::extents[1][1][1]),
+j3s(boost::extents[1][1][1]),
 net_p({0, 0, 0, 0})
 
 
@@ -437,6 +455,15 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
     j1.resize(boost::extents[nx][ny][neta]);
     j2.resize(boost::extents[nx][ny][neta]);
     j3.resize(boost::extents[nx][ny][neta]);
+    j0e.resize(boost::extents[nx][ny][neta]);
+    j1e.resize(boost::extents[nx][ny][neta]);
+    j2e.resize(boost::extents[nx][ny][neta]);
+    j3e.resize(boost::extents[nx][ny][neta]);
+    j0s.resize(boost::extents[nx][ny][neta]);
+    j1s.resize(boost::extents[nx][ny][neta]);
+    j2s.resize(boost::extents[nx][ny][neta]);
+    j3s.resize(boost::extents[nx][ny][neta]);
+
     double dx = Lx/(nx-1);
     double dy = Ly/(ny-1);
     double deta = Leta/(neta-1);
@@ -448,6 +475,14 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
         j1[ix][iy][ieta] = 0.;
         j2[ix][iy][ieta] = 0.;
         j3[ix][iy][ieta] = 0.;
+        j0e[ix][iy][ieta] = 0.;
+        j1e[ix][iy][ieta] = 0.;
+        j2e[ix][iy][ieta] = 0.;
+        j3e[ix][iy][ieta] = 0.;
+        j0s[ix][iy][ieta] = 0.;
+        j1s[ix][iy][ieta] = 0.;
+        j2s[ix][iy][ieta] = 0.;
+        j3s[ix][iy][ieta] = 0.;
         rhob[ix][iy][ieta] = 0.;
         for(int mu=0; mu<4; ++mu)
         for(int nu=mu; nu<4; ++nu)
@@ -502,8 +537,65 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
         TParticlePDG* particle = db.GetParticle(parton.pid);
 
         double Q = 0.;
-        if(!std::string(particle->ParticleClass()).compare("Quark") )
-            Q = parton.pid < 0 ? -1./3. : 1./3.;
+        double Qe = 0.;
+        double Qs = 0.;
+        if (!std::string(particle->ParticleClass()).compare("Quark")) {
+            if (parton.pid == 1) {          // up quark
+                Q = 1. / 3.;
+                Qe = 2. / 3. * e_charge;
+                Qs = 0.0;
+            } else if (parton.pid == -1) {  // anti-up quark
+                Q = -1. / 3.;
+                Qe = -2. / 3. * e_charge;
+                Qs = 0.0;
+            } else if (parton.pid == 2) {   // down quark
+                Q = 1. / 3.;
+                Qe = -1. / 3. * e_charge;
+                Qs = 0.0;
+            } else if (parton.pid == -2) {  // anti-down quark
+                Q = -1. / 3.;
+                Qe = 1. / 3. * e_charge;
+                Qs = 0.0;
+            } else if (parton.pid == 3) {   // strange quark
+                Q = 1. / 3.;
+                Qe = -1. / 3. * e_charge;
+                Qs = 1.0;
+            } else if (parton.pid == -3) {  // anti-strange quark
+                Q = -1. / 3.;
+                Qe = 1. / 3. * e_charge;
+                Qs = -1.0;
+            } 
+            // sometimes one or two heavier quarks appear in the initial condition
+            else if (parton.pid == 4) {   // charm quark
+                Q = 1. / 3.;
+                Qe = 2. / 3. * e_charge;
+                Qs = 0.0;
+            } else if (parton.pid == -4) {  // anti-charm quark
+                Q = -1. / 3.;
+                Qe = -2. / 3. * e_charge;
+                Qs = 0.0;
+            } else if (parton.pid == 5) {   // bottom quark
+                Q = 1. / 3.;
+                Qe = -1. / 3. * e_charge;
+                Qs = 0.0;
+            } else if (parton.pid == -5) {  // anti-bottom quark
+                Q = -1. / 3.;
+                Qe = 1. / 3. * e_charge;
+                Qs = 0.0;
+            } else if (parton.pid == 6) {   // top quark
+                Q = 1. / 3.;
+                Qe = 2. / 3. * e_charge;
+                Qs = 0.0;
+            } else if (parton.pid == -6) {  // anti-top quark
+                Q = 1. / 3.;
+                Qe = -2. / 3. * e_charge;
+                Qs = 0.0;
+            }
+
+            // Add more else-if clauses for other quarks and antiquarks as needed
+        }
+
+
         
         if(abs(parton.pid) == 1){dw +=1.;};
         if(abs(parton.pid) == 2){up +=1.;};
@@ -518,13 +610,13 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
         Vec3 pos0({x0,y0,eta0});
 
         //Constraint search for a cube in a range 8*sigma_r and 8*sigma_eta
-        double min_ix = std::max<double>(floor( (x0-rxy*25.*_sigma_r+Lx/2)/dx ), .0);
-        double min_iy = std::max<double>(floor( (y0-rxy*25.*_sigma_r+Ly/2)/dy ), .0);
-        double min_ieta = std::max<double>(floor( (eta0-reta*25.*_sigma_eta+Leta/2)/deta ), .0);
+        double min_ix = std::max<double>(floor( (x0-rxy*2.*_sigma_r+Lx/2)/dx ), .0);
+        double min_iy = std::max<double>(floor( (y0-rxy*2.*_sigma_r+Ly/2)/dy ), .0);
+        double min_ieta = std::max<double>(floor( (eta0-reta*2.*_sigma_eta+Leta/2)/deta ), .0);
 
-        double max_ix = std::min<double>(ceil( (x0+rxy*25.*_sigma_r+Lx/2)/dx ), nx-1);
-        double max_iy = std::min<double>(ceil( (y0+rxy*25.*_sigma_r+Ly/2)/dy ), ny-1);
-        double max_ieta = std::min<double>(ceil( (eta0+reta*25.*_sigma_eta+Leta/2)/deta), neta-1);
+        double max_ix = std::min<double>(ceil( (x0+rxy*3.*_sigma_r+Lx/2)/dx ), nx-1);
+        double max_iy = std::min<double>(ceil( (y0+rxy*3.*_sigma_r+Ly/2)/dy ), ny-1);
+        double max_ieta = std::min<double>(ceil( (eta0+reta*2.*_sigma_eta+Leta/2)/deta), neta-1);
 
         for (int ix=min_ix; ix<=max_ix; ++ix){
             double x = ix*dx - Lx*.5;
@@ -540,6 +632,14 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
                     j2[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[2]/(parton.ptau);
                     j3[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[3]/(parton.ptau);
                     rhob[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian;
+                    j0e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[0]/(parton.ptau);
+                    j1e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[1]/(parton.ptau);
+                    j2e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[2]/(parton.ptau);
+                    j3e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[3]/(parton.ptau);
+                    j0s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[0]/(parton.ptau);
+                    j1s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[1]/(parton.ptau);
+                    j2s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[2]/(parton.ptau);
+                    j3s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[3]/(parton.ptau);
                     for(int mu=0; mu<4; ++mu)
                     for(int nu=mu; nu<4; ++nu)
                         Tmunu[ix][iy][ieta][mu][nu] +=  K*parton_Tmunu[mu][nu]*smearing_factor_gaussian;

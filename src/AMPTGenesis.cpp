@@ -48,6 +48,17 @@ class AMPTGenesis
         std::vector<double> final_q1;
         std::vector<double> final_q2;
         std::vector<double> final_q3;
+        std::vector<double> final_rhoe;
+        std::vector<double> final_q0e;
+        std::vector<double> final_q1e;
+        std::vector<double> final_q2e;
+        std::vector<double> final_q3e;
+        std::vector<double> final_rhos;
+        std::vector<double> final_q0s;
+        std::vector<double> final_q1s;
+        std::vector<double> final_q2s;
+        std::vector<double> final_q3s;
+
 
         
         double smearing_k;
@@ -82,7 +93,17 @@ class AMPTGenesis
                             std::vector<double>&, //q_0
                             std::vector<double>&, //q_1
                             std::vector<double>&, //q2
-                            std::vector<double>&);//q3
+                            std::vector<double>&, //q3
+                            std::vector<double>&, //rhoe
+                            std::vector<double>&, //q0e
+                            std::vector<double>&, //q1e
+                            std::vector<double>&, //q2e
+                            std::vector<double>&, //q3e
+                            std::vector<double>&, //rhos
+                            std::vector<double>&, //q0s
+                            std::vector<double>&, //q1s
+                            std::vector<double>&, //q2s
+                            std::vector<double>&); //q3s
         void output_to_file();
         void output_to_file_center();
 };
@@ -118,7 +139,17 @@ void AMPTGenesis::output_to_vectors(std::vector<double> &energy_density_out,
                                         std::vector<double> &q0_out,
                                         std::vector<double> &q1_out,
                                         std::vector<double> &q2_out,
-                                        std::vector<double> &q3_out) {
+                                        std::vector<double> &q3_out,
+                                        std::vector<double> &rhoe_out,
+                                        std::vector<double> &q0e_out,
+                                        std::vector<double> &q1e_out,
+                                        std::vector<double> &q2e_out,
+                                        std::vector<double> &q3e_out,
+                                        std::vector<double> &rhos_out,
+                                        std::vector<double> &q0s_out,
+                                        std::vector<double> &q1s_out,
+                                        std::vector<double> &q2s_out,
+                                        std::vector<double> &q3s_out) {
     energy_density_out = final_energy_density;
     pressure_out = final_pressure;
     ut_out = final_ut;
@@ -142,6 +173,16 @@ void AMPTGenesis::output_to_vectors(std::vector<double> &energy_density_out,
     q1_out = final_q1;
     q2_out = final_q2;
     q3_out = final_q3;
+    rhoe_out = final_rhoe;
+    q0e_out = final_q0e;
+    q1e_out = final_q1e;
+    q2e_out = final_q2e;
+    q3e_out = final_q3e;
+    rhos_out = final_rhos;
+    q0s_out = final_q0s;
+    q1s_out = final_q1s;
+    q2s_out = final_q2s;
+    q3s_out = final_q3s;
 }
 
 
@@ -184,10 +225,22 @@ void AMPTGenesis::write_vectors(Hydrodynamizer hydro, AMPTSmearer smearer){
                 final_q1.push_back(0.);
                 final_q2.push_back(0.);
                 final_q3.push_back(0.);
+                final_rhoe.push_back(0.);
+                final_q0e.push_back(0.);
+                final_q1e.push_back(0.);
+                final_q2e.push_back(0.);
+                final_q3e.push_back(0.);
+                final_rhos.push_back(0.);
+                final_q0s.push_back(0.);
+                final_q1s.push_back(0.);
+                final_q2s.push_back(0.);
+                final_q3s.push_back(0.);
                     continue;
                 }
                 double u0 = sqrt(1.+pow(hydro.TmunuOut[ix][iy][ieta].u[0],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[1],2.)+pow(tau0*hydro.TmunuOut[ix][iy][ieta].u[2],2.));
                 double rhob_ = smearer.j0[ix][iy][ieta]*u0 - smearer.j1[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]- smearer.j2[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-tau0*tau0*smearer.j3[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
+                double rhoe_ = smearer.j0e[ix][iy][ieta]*u0-smearer.j1e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-tau0*tau0*smearer.j3e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
+                double rhos_ = smearer.j0s[ix][iy][ieta]*u0-smearer.j1s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-tau0*tau0*smearer.j3s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
                 final_energy_density.push_back(hydro.TmunuOut[ix][iy][ieta].eps);
                 final_pressure.push_back((hydro.TmunuOut[ix][iy][ieta].eps)/3.); //ideal eos
                 final_ut.push_back(sqrt(1.+pow(hydro.TmunuOut[ix][iy][ieta].u[0],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[1],2.)+pow(tau0*hydro.TmunuOut[ix][iy][ieta].u[2],2.)));
@@ -213,6 +266,16 @@ void AMPTGenesis::write_vectors(Hydrodynamizer hydro, AMPTSmearer smearer){
                 final_q1.push_back(smearer.j1[ix][iy][ieta]-rhob_*hydro.TmunuOut[ix][iy][ieta].u[0]);
                 final_q2.push_back(smearer.j2[ix][iy][ieta]-rhob_*hydro.TmunuOut[ix][iy][ieta].u[1]);
                 final_q3.push_back(smearer.j3[ix][iy][ieta]-rhob_*hydro.TmunuOut[ix][iy][ieta].u[2]);
+                final_rhoe.push_back(smearer.j0e[ix][iy][ieta]*u0-smearer.j1e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-tau0*tau0*smearer.j3e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
+                final_q0e.push_back(smearer.j0e[ix][iy][ieta]-rhoe_*u0);
+                final_q1e.push_back(smearer.j1e[ix][iy][ieta]-rhoe_*hydro.TmunuOut[ix][iy][ieta].u[0]);
+                final_q2e.push_back(smearer.j2e[ix][iy][ieta]-rhoe_*hydro.TmunuOut[ix][iy][ieta].u[1]);
+                final_q3e.push_back(smearer.j3e[ix][iy][ieta]-rhoe_*hydro.TmunuOut[ix][iy][ieta].u[2]);
+                final_rhos.push_back(smearer.j0s[ix][iy][ieta]*u0-smearer.j1s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-tau0*tau0*smearer.j3s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
+                final_q0s.push_back(smearer.j0s[ix][iy][ieta]-rhos_*u0);
+                final_q1s.push_back(smearer.j1s[ix][iy][ieta]-rhos_*hydro.TmunuOut[ix][iy][ieta].u[0]);
+                final_q2s.push_back(smearer.j2s[ix][iy][ieta]-rhos_*hydro.TmunuOut[ix][iy][ieta].u[1]);
+                final_q3s.push_back(smearer.j3s[ix][iy][ieta]-rhos_*hydro.TmunuOut[ix][iy][ieta].u[2]);
                 //std::cout << smearer.j1[ix][iy][ieta]-rhob_*hydro.TmunuOut[ix][iy][ieta].u[0] <<std::endl;
                 //std::cout <<"dif" <<rhob_-smearer.rhob[ix][iy][ieta]<<std::endl;
 
@@ -250,7 +313,7 @@ void AMPTGenesis::output_to_file(){
     fout << "# Lx = " << Lx << std::endl;
     fout << "# Ly = " << Ly << std::endl;
     fout << "# Leta = " << Leta << std::endl;
-    fout << "#x y eta epsilon ux uy ueta trace pitautau pitaux pitauy pitaueta pixx pixy pixeta piyy piyeta pietaeta rhob qt qx qy qeta" <<std::endl;
+    fout << "#x y eta epsilon ux uy ueta trace pitautau pitaux pitauy pitaueta pixx pixy pixeta piyy piyeta pietaeta rhob qt qx qy qeta rhoe q0e q1e q2e q3e rhos q0s q1s q2s q3s" <<std::endl;
 
 
         for(int ix=0;ix<nx;++ix){
@@ -283,7 +346,18 @@ void AMPTGenesis::output_to_file(){
                 << final_q0[idx] << " "
                 << final_q1[idx] << " "
                 << final_q2[idx] << " "
-                << final_q3[idx] << std::endl;
+                << final_q3[idx] << " "
+                << final_rhoe[idx] << " "
+                << final_q0e[idx] << " "
+                << final_q1e[idx] << " "
+                << final_q2e[idx] << " "
+                << final_q3e[idx] << " "
+                << final_rhos[idx] << " "
+                << final_q0s[idx] << " "
+                << final_q1s[idx] << " "
+                << final_q2s[idx] << " "
+                << final_q3s[idx] << std::endl;
+
 
                 //fout.flags(bckp_flags);
             }
@@ -409,7 +483,6 @@ double AMPTGenesis::global_conservation_law(Hydrodynamizer hydro){
 void AMPTGenesis::run_genesis(){
 
     std::cout<< "AMPT input folder:  "<< input_folder_path << std::endl;
-
     AMPTSmearer smearer(input_folder_path,smearing_k,nx,
         ny,neta,Lx,Ly,Leta,sigma_r,sigma_eta,tau0,rxy,reta);
     smearer.parse_history();
