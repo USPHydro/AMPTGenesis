@@ -62,15 +62,19 @@ po::variables_map get_input_parameters(int ac, char* av[]){
         ("sample_radius.xy", po::value<double>()->default_value(2.), "Scan size in transverse direction (in multiple of sigma_r)")
         ("sample_radius.eta,", po::value<double>()->default_value(2.), "Scan size in longitudinal direction (in multiple of sigma_eta)")
     ;
+    po::options_description coordinates("Coordinates of the grid");
+    coordinates.add_options()
+        ("coordinates.system", po::value<std::string>()->default_value("hyperbolic"), "coordinate system to use (cartesian or hyperbolic)");
+
 
     po::options_description cmdline_options;        //List of inputs acceptable in the comand line
     po::options_description config_file_options;    //List of inputs acceptable in the config file
     po::options_description visible;                //List of inputs visible in the help menu
     po::positional_options_description pos_args;    //Configuration of positional arguments
 
-    cmdline_options.add(generic).add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius);
-    config_file_options.add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius);
-    visible.add(generic).add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius);
+    cmdline_options.add(generic).add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius).add(coordinates);
+    config_file_options.add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius).add(coordinates);
+    visible.add(generic).add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius).add(coordinates);
 
     pos_args.add("genesis-config",1);
     pos_args.add("output_path",1);
@@ -119,6 +123,7 @@ int main(int argc, char** argv){
   genesis_ptr->sigma_eta = vm["smearing.sigma_eta"].as<double>(); 
   genesis_ptr->rxy = vm["sample_radius.xy"].as<double>(); 
   genesis_ptr->reta = vm["sample_radius.eta"].as<double>();
+  genesis_ptr->coordinate_system = vm["coordinates.system"].as<std::string>();
 
   genesis_ptr->run_genesis();
   std::cout << "Saving output to file...\n";

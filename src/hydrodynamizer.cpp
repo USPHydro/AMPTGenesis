@@ -25,6 +25,7 @@ class HydroTmunu
 {
 private:
 public:
+    std::string coordinates;
     double eps;
     double Tr;
     Vec3 u;
@@ -40,7 +41,8 @@ public:
     double piyeta;
     double pietaeta;
     HydroTmunu();
-    HydroTmunu(double epsilon, double trace, Vec3 u, std::array<double, 10> pi);
+    HydroTmunu(double epsilon, double trace, Vec3 u, std::array<double, 10> pi,
+               std::string coordinates);
     ~HydroTmunu();
 };
 
@@ -49,9 +51,9 @@ eps(.00f),Tr(.0f),u({.0f,.0f,.0f}),
 pitautau(.0f), pitaux(.0f), pitauy(.0f),
 pitaueta(.0f), pixx(.0f), pixy(.0f),
 pixeta(.0f), piyy(.0f), piyeta(.0f),
-pietaeta(.0f) {}
+pietaeta(.0f), coordinates("hyperbolic") {}
 
- HydroTmunu::HydroTmunu(double epsilon, double trace, Vec3 u, std::array<double, 10> pi)
+ HydroTmunu::HydroTmunu(double epsilon, double trace, Vec3 u, std::array<double, 10> pi, std::string coordinates)
 {
     this->eps = epsilon;
     this->Tr = trace;
@@ -66,6 +68,7 @@ pietaeta(.0f) {}
     this->piyy = pi[7];
     this->piyeta = pi[8];
     this->pietaeta = pi[9];
+    this->coordinates = coordinates;
 }
 
 HydroTmunu::~HydroTmunu()
@@ -78,13 +81,14 @@ class Hydrodynamizer
 private:
     boost::multi_array<Mat4x4,3> Tmunu;
     int nx, ny, neta;
+    std::string coordinates;
     TMatrixFSym gmunu;
 
 
 public:
     boost::multi_array<HydroTmunu,3> TmunuOut;
     Hydrodynamizer(boost::multi_array<Mat4x4,3> Tmunu, double tau,
-                   int nx, int ny, int neta);
+                   int nx, int ny, int neta, std::string coordinates);
     ~Hydrodynamizer();
 
     void diagonalize();
@@ -92,7 +96,7 @@ public:
 
 Hydrodynamizer::Hydrodynamizer(boost::multi_array<Mat4x4,3> Tmunu,
                                double tau,
-                               int nx, int ny, int neta) :
+                               int nx, int ny, int neta, std::string coordinates) :
 Tmunu(Tmunu),
 nx(nx),
 ny(ny),
@@ -105,8 +109,17 @@ TmunuOut(boost::extents[1][1][1])
     for(int mu=0; mu<4; ++mu)
     for(int nu=0; nu<4; ++nu)
         gmunu_data[mu*4+nu] = (mu == nu ? (mu > 0 ? -1 : 1) : 0);
-
-    gmunu_data[15] = (double) -pow(tau,2);
+    this->coordinates = coordinates;
+    std::cout << "Using " << coordinates << " coordinates" << std::endl;
+    if (coordinates == "hyperbolic"){
+        gmunu_data[15] = (double) -pow(tau,2);
+    }
+    else if (coordinates == "cartesian"){
+        gmunu_data[15] = -1.;
+    }
+    else{
+        std::cout << "Unknown coordinate system" << std::endl;
+    }
 
     gmunu.SetMatrixArray(gmunu_data.data());
 

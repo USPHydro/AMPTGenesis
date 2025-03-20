@@ -25,6 +25,7 @@ class AMPTGenesis
 
         std::string input_folder_path;
         std::string output_file_path;
+        std::string coordinate_system;
 
         std::vector<double> final_energy_density;
         std::vector<double> final_pressure;      
@@ -237,13 +238,13 @@ void AMPTGenesis::write_vectors(Hydrodynamizer hydro, AMPTSmearer smearer){
                 final_q3s.push_back(0.);
                     continue;
                 }
-                double u0 = sqrt(1.+pow(hydro.TmunuOut[ix][iy][ieta].u[0],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[1],2.)+pow(tau0*hydro.TmunuOut[ix][iy][ieta].u[2],2.));
-                double rhob_ = smearer.j0[ix][iy][ieta]*u0 - smearer.j1[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]- smearer.j2[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-tau0*tau0*smearer.j3[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
-                double rhoe_ = smearer.j0e[ix][iy][ieta]*u0-smearer.j1e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-tau0*tau0*smearer.j3e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
-                double rhos_ = smearer.j0s[ix][iy][ieta]*u0-smearer.j1s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-tau0*tau0*smearer.j3s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
+                double u0 = sqrt(1.+pow(hydro.TmunuOut[ix][iy][ieta].u[0],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[1],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[2],2.));
+                double rhob_ = smearer.j0[ix][iy][ieta]*u0 - smearer.j1[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]- smearer.j2[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
+                double rhoe_ = smearer.j0e[ix][iy][ieta]*u0-smearer.j1e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
+                double rhos_ = smearer.j0s[ix][iy][ieta]*u0-smearer.j1s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
                 final_energy_density.push_back(hydro.TmunuOut[ix][iy][ieta].eps);
                 final_pressure.push_back((hydro.TmunuOut[ix][iy][ieta].eps)/3.); //ideal eos
-                final_ut.push_back(sqrt(1.+pow(hydro.TmunuOut[ix][iy][ieta].u[0],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[1],2.)+pow(tau0*hydro.TmunuOut[ix][iy][ieta].u[2],2.)));
+                final_ut.push_back(sqrt(1.+pow(hydro.TmunuOut[ix][iy][ieta].u[0],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[1],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[2],2.)));
                 final_ux.push_back(hydro.TmunuOut[ix][iy][ieta].u[0]);
                 final_uy.push_back(hydro.TmunuOut[ix][iy][ieta].u[1]);
                 final_un.push_back(hydro.TmunuOut[ix][iy][ieta].u[2]);
@@ -261,17 +262,17 @@ void AMPTGenesis::write_vectors(Hydrodynamizer hydro, AMPTSmearer smearer){
                 
                 Nbar += smearer.rhob[ix][iy][ieta]*dx*dy*tau0*tau0*deta;
                 //final_rhob.push_back(smearer.rhob[ix][iy][ieta]);
-                final_rhob.push_back(smearer.j0[ix][iy][ieta]*u0 - smearer.j1[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]- smearer.j2[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-tau0*tau0*smearer.j3[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
+                final_rhob.push_back(smearer.j0[ix][iy][ieta]*u0 - smearer.j1[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]- smearer.j2[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
                 final_q0.push_back(smearer.j0[ix][iy][ieta]-rhob_*u0);
                 final_q1.push_back(smearer.j1[ix][iy][ieta]-rhob_*hydro.TmunuOut[ix][iy][ieta].u[0]);
                 final_q2.push_back(smearer.j2[ix][iy][ieta]-rhob_*hydro.TmunuOut[ix][iy][ieta].u[1]);
                 final_q3.push_back(smearer.j3[ix][iy][ieta]-rhob_*hydro.TmunuOut[ix][iy][ieta].u[2]);
-                final_rhoe.push_back(smearer.j0e[ix][iy][ieta]*u0-smearer.j1e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-tau0*tau0*smearer.j3e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
+                final_rhoe.push_back(smearer.j0e[ix][iy][ieta]*u0-smearer.j1e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
                 final_q0e.push_back(smearer.j0e[ix][iy][ieta]-rhoe_*u0);
                 final_q1e.push_back(smearer.j1e[ix][iy][ieta]-rhoe_*hydro.TmunuOut[ix][iy][ieta].u[0]);
                 final_q2e.push_back(smearer.j2e[ix][iy][ieta]-rhoe_*hydro.TmunuOut[ix][iy][ieta].u[1]);
                 final_q3e.push_back(smearer.j3e[ix][iy][ieta]-rhoe_*hydro.TmunuOut[ix][iy][ieta].u[2]);
-                final_rhos.push_back(smearer.j0s[ix][iy][ieta]*u0-smearer.j1s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-tau0*tau0*smearer.j3s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
+                final_rhos.push_back(smearer.j0s[ix][iy][ieta]*u0-smearer.j1s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
                 final_q0s.push_back(smearer.j0s[ix][iy][ieta]-rhos_*u0);
                 final_q1s.push_back(smearer.j1s[ix][iy][ieta]-rhos_*hydro.TmunuOut[ix][iy][ieta].u[0]);
                 final_q2s.push_back(smearer.j2s[ix][iy][ieta]-rhos_*hydro.TmunuOut[ix][iy][ieta].u[1]);
@@ -286,88 +287,78 @@ void AMPTGenesis::write_vectors(Hydrodynamizer hydro, AMPTSmearer smearer){
     //std::cout << "Net Baryon Number" << Nbar << std::endl;
 }
 
-void AMPTGenesis::output_to_file(){
+
+void AMPTGenesis::output_to_file() {
     std::string path_out = output_file_path;
-    std::ofstream fout;
-    fout.open(path_out, std::ofstream::out );
-    double dx = Lx/(nx-1.);
-    double dy = Ly/(ny-1.);
-    double deta = Leta/(neta-1.);
-
-    //fout << "# b = " << smearer.impact_parameter << std::endl;
-    //fout << "# Npart = "<< smearer.Npart << std::endl;
-    //fout << "# NpartTarg = "<< smearer.NpartTarg << std::endl;
-    //fout << "# NpartProj = "<< smearer.NpartProj << std::endl;
-    //fout << "# NpartTargElastic = "<< smearer.NpartTargElastic << std::endl;
-    //fout << "# NpartProjElastic = "<< smearer.NpartProjElastic << std::endl;
-    //fout << "# refmult1 = "<< smearer.refmult1 << std::endl;
-    //fout << "# refmult2 = "<< smearer.refmult2 << std::endl;
-    //fout << "# refmult3 = "<< smearer.refmult3 << std::endl;
-    //fout << "# Fwd1 = "<< smearer.Fwd1 << std::endl;
-    //fout << "# Fwd2 = "<< smearer.Fwd2 << std::endl;
-    //fout << "# Fwd3 = "<< smearer.Fwd3 << std::endl;
-    //fout << "# FwdAll = " << smearer.FwdAll << std::endl;
-    fout << "# nx = " << nx << std::endl;
-    fout << "# ny = " << ny << std::endl;
-    fout << "# neta = " << neta << std::endl;
-    fout << "# Lx = " << Lx << std::endl;
-    fout << "# Ly = " << Ly << std::endl;
-    fout << "# Leta = " << Leta << std::endl;
-    fout << "#x y eta epsilon ux uy ueta trace pitautau pitaux pitauy pitaueta pixx pixy pixeta piyy piyeta pietaeta rhob qt qx qy qeta rhoe q0e q1e q2e q3e rhos q0s q1s q2s q3s" <<std::endl;
-
-
-        for(int ix=0;ix<nx;++ix){
-        double x = ix*dx - Lx*.5;
-        for(int iy=0;iy<ny;++iy){
-            double y = iy*dy - Ly*.5;
-            for(int ieta=0;ieta<neta;++ieta){
-                double eta = ieta*deta - Leta*.5;
-                const int idx = (ny*neta)*ix + neta*iy + ieta;
-                //std::ios::fmtflags bckp_flags = fout.flags();
-                
-                fout << x << " " << y << " " << eta << " "
-                //<< std::scientific << std::setprecision(16)
-                << final_energy_density[idx] << " "
-                << final_ux[idx] << " "
-                << final_uy[idx] << " "
-                << final_un[idx] << " "
-                << -3.*final_Pi[idx] << " "
-                << final_pitt[idx]<< " "
-                << final_pitx[idx] << " "
-                << final_pity[idx] << " "
-                << final_pitn[idx] << " "
-                <<final_pixx[idx] << " "
-                << final_pixy[idx] << " "
-                <<final_pixn[idx] << " "
-                << final_piyy[idx] << " "
-                << final_piyn[idx] << " "
-                << final_pinn[idx] << " "
-                << final_rhob[idx] << " "
-                << final_q0[idx] << " "
-                << final_q1[idx] << " "
-                << final_q2[idx] << " "
-                << final_q3[idx] << " "
-                << final_rhoe[idx] << " "
-                << final_q0e[idx] << " "
-                << final_q1e[idx] << " "
-                << final_q2e[idx] << " "
-                << final_q3e[idx] << " "
-                << final_rhos[idx] << " "
-                << final_q0s[idx] << " "
-                << final_q1s[idx] << " "
-                << final_q2s[idx] << " "
-                << final_q3s[idx] << std::endl;
-
-
-                //fout.flags(bckp_flags);
-            }
-        }
-
+    std::ofstream fout(path_out, std::ios::out);
+    if (!fout.is_open()) {
+        std::cerr << "Error: Unable to open file " << path_out << std::endl;
+        return;
     }
 
-    fout.flush();
-    fout.close();
+    double dx = Lx / (nx - 1.);
+    double dy = Ly / (ny - 1.);
+    double deta = Leta / (neta - 1.);
 
+    // Header
+    fout << "# nx = " << nx << "\n"
+         << "# ny = " << ny << "\n"
+         << "# neta = " << neta << "\n"
+         << "# Lx = " << Lx << "\n"
+         << "# Ly = " << Ly << "\n"
+         << "# Leta = " << Leta << "\n"
+         << "# x y eta epsilon ux uy ueta trace pitautau pitaux pitauy pitaueta pixx pixy pixeta piyy piyeta pietaeta rhob qt qx qy qeta rhoe q0e q1e q2e q3e rhos q0s q1s q2s q3s\n";
+
+    // Use a string stream to buffer the output
+    std::ostringstream buffer;
+    buffer.precision(16);  // Set high precision for floating-point values
+
+    for (int ix = 0; ix < nx; ++ix) {
+        double x = ix * dx - Lx * 0.5;
+        for (int iy = 0; iy < ny; ++iy) {
+            double y = iy * dy - Ly * 0.5;
+            for (int ieta = 0; ieta < neta; ++ieta) {
+                double eta = ieta * deta - Leta * 0.5;
+                const int idx = (ny * neta) * ix + neta * iy + ieta;
+
+                buffer << x << " " << y << " " << eta << " "
+                       << final_energy_density[idx] << " "
+                       << final_ux[idx] << " "
+                       << final_uy[idx] << " "
+                       << final_un[idx] << " "
+                       << -3. * final_Pi[idx] << " "
+                       << final_pitt[idx] << " "
+                       << final_pitx[idx] << " "
+                       << final_pity[idx] << " "
+                       << final_pitn[idx] << " "
+                       << final_pixx[idx] << " "
+                       << final_pixy[idx] << " "
+                       << final_pixn[idx] << " "
+                       << final_piyy[idx] << " "
+                       << final_piyn[idx] << " "
+                       << final_pinn[idx] << " "
+                       << final_rhob[idx] << " "
+                       << final_q0[idx] << " "
+                       << final_q1[idx] << " "
+                       << final_q2[idx] << " "
+                       << final_q3[idx] << " "
+                       << final_rhoe[idx] << " "
+                       << final_q0e[idx] << " "
+                       << final_q1e[idx] << " "
+                       << final_q2e[idx] << " "
+                       << final_q3e[idx] << " "
+                       << final_rhos[idx] << " "
+                       << final_q0s[idx] << " "
+                       << final_q1s[idx] << " "
+                       << final_q2s[idx] << " "
+                       << final_q3s[idx] << "\n";
+            }
+        }
+    }
+
+    // Write the entire buffer to file at once
+    fout << buffer.str();
+    fout.close();
 }
 
 
@@ -457,9 +448,18 @@ double AMPTGenesis::global_conservation_law(Hydrodynamizer hydro){
                 double cosheta = cosh(eta); double sinheta = sinh(eta);
 
                 double eps = hydro.TmunuOut[ix][iy][ieta].eps;
-                double utau = sqrt(pow(hydro.TmunuOut[ix][iy][ieta].u[0],2)
+                double utau;
+
+                if (coordinate_system == "cartesian"){
+                    utau =  sqrt(pow(hydro.TmunuOut[ix][iy][ieta].u[0],2)
+                                  +pow(hydro.TmunuOut[ix][iy][ieta].u[1],2)
+                                  +pow(hydro.TmunuOut[ix][iy][ieta].u[2],2)+1.);
+                }
+                else if (coordinate_system == "hyperbolic"){
+                    utau = sqrt(pow(hydro.TmunuOut[ix][iy][ieta].u[0],2)
                                   +pow(hydro.TmunuOut[ix][iy][ieta].u[1],2)
                                   +pow(tau0*hydro.TmunuOut[ix][iy][ieta].u[2],2)+1.);
+                }
                 double ueta = hydro.TmunuOut[ix][iy][ieta].u[2];
                 double Tr = hydro.TmunuOut[ix][iy][ieta].Tr;
                 double pitautau = hydro.TmunuOut[ix][iy][ieta].pitautau;
@@ -473,8 +473,12 @@ double AMPTGenesis::global_conservation_law(Hydrodynamizer hydro){
                 //if (3*eps-Tr < 0) std::cout<<"Negative term found" << std::endl;
                 //if (pitautau < 0) std::cout<<"Negative shear term found" << std::endl;
 
-
-                Ttaut += (Ttautau*cosheta + tau0*Ttaueta*sinheta)*dx*dy*deta*tau0; //GeV
+                if (coordinate_system == "cartesian"){
+                    Ttaut += (Ttautau)*dx*dy*deta;
+                }
+                else if (coordinate_system == "hyperbolic"){
+                    Ttaut += (Ttautau*cosheta + tau0*Ttaueta*sinheta)*dx*dy*deta*tau0; //GeV
+                }
     }
 
     return Ttaut;
@@ -484,7 +488,7 @@ void AMPTGenesis::run_genesis(){
 
     std::cout<< "AMPT input folder:  "<< input_folder_path << std::endl;
     AMPTSmearer smearer(input_folder_path,smearing_k,nx,
-        ny,neta,Lx,Ly,Leta,sigma_r,sigma_eta,tau0,rxy,reta);
+        ny,neta,Lx,Ly,Leta,sigma_r,sigma_eta,tau0,rxy,reta,coordinate_system);
     smearer.parse_history();
     std::cout << "[INFO]: History parsed" << std::endl << std::flush;
     smearer.propagate(tau0);
@@ -496,7 +500,8 @@ void AMPTGenesis::run_genesis(){
                         tau0,
                         nx,
                         ny,
-                        neta);
+                        neta,
+                        coordinate_system);
 
     hydro.diagonalize();
     std::cout << "[INFO]: Finished diagonalization." << std::endl << std::flush;

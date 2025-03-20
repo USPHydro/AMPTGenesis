@@ -26,6 +26,7 @@ typedef std::vector<std::string> svec;
 class AMPTSmearer
 {
 private:
+    std::string coordinates;
     svec cols_hist;
     svec init_parton;
 
@@ -77,7 +78,7 @@ public:
 
 
     AMPTSmearer(std::string results_path, double K,int nx_, int ny_, int neta_, double Lx_,double Ly_, double Leta_,
-                                double sigma_r_, double sigma_eta_, double tau0_, double rxy_, double reta_);
+                                double sigma_r_, double sigma_eta_, double tau0_, double rxy_, double reta_, std::string coordinate_system);
     double K;
     ~AMPTSmearer();
 
@@ -122,7 +123,7 @@ svec AMPTSmearer::split(std::string input_string, char delimiter) const
 
 
 AMPTSmearer::AMPTSmearer(std::string results_path,double Kin,int nx_, int ny_, int neta_, double Lx_,double Ly_, double Leta_,
-                                double sigma_r_, double sigma_eta_, double tau0_, double rxy_, double reta_):
+                                double sigma_r_, double sigma_eta_, double tau0_, double rxy_, double reta_, std::string coordinate_system):
 refmult1(.0),
 refmult2(.0),
 refmult3(.0),
@@ -144,11 +145,8 @@ j0s(boost::extents[1][1][1]),
 j1s(boost::extents[1][1][1]),
 j2s(boost::extents[1][1][1]),
 j3s(boost::extents[1][1][1]),
-net_p({0, 0, 0, 0})
-
-
-
-
+net_p({0, 0, 0, 0}),
+coordinates(coordinate_system)
 {
     nx = nx_; ny=ny_; neta=neta_; Lx=Lx_; Ly=Ly_; Leta=Leta_; 
                                 sigma_r=sigma_r_; sigma_eta = sigma_eta_; tau0=tau0_; rxy=rxy_; reta = reta_;
@@ -356,11 +354,20 @@ PartonThermalized AMPTSmearer::free_streamer(PartonCollision last_collision, dou
 
     double pos_init = x0[2]-vel[2]*t0; //Position back-propagated to t = 0 - This quantity appears many times
                                       //thus we compute it only once here
-
+                     
     //Final time in cartesian coordinates
-    double Delta = sqrt( pow(pos_init,2) + pow(tau_f,2)*(1-pow(vel[2],2)) );
-    double tf = vel[2]*pos_init + Delta;
-    tf = tf/(1-pow(vel[2],2));
+    double tf;
+    if(coordinates == "cartesian"){
+        tf = tau_f;
+        //tf = tf/(1-pow(vel[2],2));
+    }
+    else if(coordinates == "hyperbolic"){
+        double Delta= sqrt( pow(pos_init,2) + pow(tau_f,2)*(1-pow(vel[2],2)) );
+        tf = vel[2]*pos_init + Delta;
+        tf = tf/(1-pow(vel[2],2));
+    }
+
+
 
     //Final position in cartesian coordinates
 
@@ -376,18 +383,56 @@ PartonThermalized AMPTSmearer::free_streamer(PartonCollision last_collision, dou
 void AMPTSmearer::propagate(double tau_f){
 
     //ProgressBar pb(npartons, "Free-Streaming:");
+    int nform_below = 0;
+    int nform_0coll = 0;
+    int nform_coll = 0;
     double max_eta_s = 0.;
     double max_x = 0.;
     double max_y = 0.;
+    double max_z = 0.;
     double max_p = 0.;
+    double max_px = 0.;
+    double max_py = 0.;
+    double max_pz = 0.;
+    double t_form = 0.;
+    std::cout << "Number of partons: " << npartons << std::endl;
     for (auto parton_cols : this->parton_histories){
         int ncols = parton_cols.size();
-
-        if ((ncols == 1) || (parton_cols[ncols-1].tau < tau_f)){
+        double t_p1;
+        double t_m1;
+        if (coordinates == "cartesian"){
+            t_m1 = parton_cols[0].t;
+        } else if (coordinates == "hyperbolic"){
+            t_m1 = parton_cols[0].tau;
+        } else {
+            std::cout << "Unknown coordinate system" << std::endl;
+            exit(1);
+        }
+        double t_before;
+        if(t_m1 < tau_f){
+            nform_below++;
+        }
+        //formation time
+        if ((ncols == 1) && (t_m1 <= tau_f)){
+            nform_0coll++;
             thermalized_partons.push_back( free_streamer(parton_cols[ncols-1],tau_f) );
         } else {
             for (int icol=0; icol<ncols-1; ++icol){
-                if (parton_cols[icol+1].tau > tau_f){
+                if (coordinates == "cartesian"){
+                    t_p1 = parton_cols[icol+1].t;
+                    t_before = parton_cols[icol].t;
+                    t_form = parton_cols[icol].t;
+                } else if (coordinates == "hyperbolic"){
+                    t_p1 = parton_cols[icol+1].tau;
+                    t_before = parton_cols[icol].tau;
+                    t_form = parton_cols[icol].tau;
+                } else {
+                    std::cout << "Unknown coordinate system" << std::endl;
+                    exit(1);
+                }
+                //if (t_p1 >= tau_f && t_form <= tau_f){
+                if (t_p1 >= tau_f ){
+                    nform_coll++;
                     thermalized_partons.push_back( free_streamer(parton_cols[icol],tau_f) );
                     break;
                 }
@@ -397,6 +442,10 @@ void AMPTSmearer::propagate(double tau_f){
         //pb.step();
         //#endif
     }
+    std::cout << "Number of partons below tau_f: " << nform_below << std::endl;
+    std::cout << "Number of partons with 0 collisions accepted: " << nform_0coll << std::endl;
+    std::cout << "Number of partons with collisions accepted: " << nform_coll << std::endl;
+    std::cout << "tau_f = " << tau_f << std::endl;
     TFile* fdebug = new TFile("debug.root","recreate");
     TH1D* heta =  new TH1D("heta","Parton dN/deta",100,-5,5);
     TH1D* hY =  new TH1D("hY","Parton dN/deta",100,-5,5);
@@ -404,11 +453,13 @@ void AMPTSmearer::propagate(double tau_f){
     TH2D* h_peta_vs_eta_s =  new TH2D("h_peta_vs_eta_s","Parton dN/deta",200,-10,10,200,-10,10);
     TH2D* hY_vs_eta_s =  new TH2D("hY_vs_eta_s","Parton dN/deta",200,-10,10,200,-10,10);
     TH2D* ht_vs_z =  new TH2D("hz_vs_t","Parton dN/deta",2000,-100,100,2000,0,100);
-
+    std::cout << "Number of thermalized partons: " << thermalized_partons.size() << std::endl;
     for (auto p : thermalized_partons){
 
         double abs_p = sqrt( pow(p.outgoing_mom[0],2) + pow(p.outgoing_mom[1],2) + pow(p.outgoing_mom[2],2));
         double pz = p.outgoing_mom[2];
+        double px = p.outgoing_mom[0];
+        double py = p.outgoing_mom[1];
         double eta = 0.5*log( (abs_p + pz)/(abs_p - pz) );
         heta->Fill(eta);
         hY_vs_eta_s->Fill(p.eta_s,p.Y);
@@ -424,6 +475,14 @@ void AMPTSmearer::propagate(double tau_f){
             max_y = fabs(p.x[1]);
         if ( fabs(abs_p) > max_p )
             max_p = fabs(abs_p);
+        if ( fabs(p.x[2]) > max_z )
+            max_z = fabs(p.x[2]);
+        if ( fabs(px) > max_px )
+            max_px = fabs(px);
+        if ( fabs(py) > max_py )
+            max_py = fabs(py);
+        if ( fabs(pz) > max_pz )
+            max_pz = fabs(pz);
 
 
     }
@@ -433,6 +492,10 @@ void AMPTSmearer::propagate(double tau_f){
     std::cout<<"Largest y = "<< max_y << std::endl;
     std::cout<<"Largest eta_s = "<< max_eta_s << std::endl;
     std::cout<<"Largest abs_p = "<< max_p << std::endl;
+    std::cout<<"Largest z = "<< max_z << std::endl;
+    std::cout<<"Largest px = "<< max_px << std::endl;
+    std::cout<<"Largest py = "<< max_py << std::endl;
+    std::cout<<"Largest pz = "<< max_pz << std::endl;
     return;
 
 }
@@ -442,7 +505,14 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
     double _sigma_r = sr;
     double _sigma_eta = seta;
     //Norm that will accompany the smearing
-    double norm = K/2./M_PI/pow(_sigma_r,2)/sqrt(2*M_PI)/_sigma_eta/tau0;
+    double norm;
+    //jacobian tau
+    if (coordinates == "cartesian")
+        norm = K/2./M_PI/pow(_sigma_r,2)/sqrt(2*M_PI)/_sigma_eta;
+    else if (coordinates == "hyperbolic")
+        norm = K/2./M_PI/pow(_sigma_r,2)/sqrt(2*M_PI)/_sigma_eta/tau0;
+    
+    
     double up = 0.;
     double dw =0.;
     double st = 0.;
@@ -495,22 +565,38 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
         return std::exp(-arg*.5);
     };
 
-        auto smearing_func_spline = [&_sigma_r, &_sigma_eta](Vec3 x0, Vec3 x){
-        double spline_norm_2d =  15./(14.*_sigma_r*_sigma_r);
-        double spline_norm_1d = 1./(6.*_sigma_eta);
+    auto smearing_func_spline = [this](Vec3 x0, Vec3 x){
+        double spline_norm_2d =  5./(14.*M_PI *this->sigma_r*this->sigma_r);
+        double spline_norm_1d = 1./(6.*this->sigma_eta);
         double kernel_1d = 0.0;
         double kernel_2d = 0.0;
-        double q_2d = sqrt(pow(x[0]-x0[0],2) + pow(x[1]-x0[1],2))/_sigma_r;
-        double q_1d =  sqrt(pow(x[2] - x0[2],2))/_sigma_eta;
+        double q_2d = sqrt(pow(x[0]-x0[0],2) + pow(x[1]-x0[1],2))/this->sigma_r;
+        double q_1d =  sqrt(pow(x[2] - x0[2],2))/this->sigma_eta;
 
-        if (q_2d >= 2.){kernel_2d += 0.0;}
-        if (q_2d<2. && q_2d >= 1. ){kernel_2d += spline_norm_2d*pow(2.-q_2d,3.);}
-        if (q_2d>=0 && q_2d <1.){kernel_2d += spline_norm_2d*(pow(2.-q_2d,3.)-4.*pow(1.-q_2d,3.));}
+        if (q_2d <=1.){
+            kernel_2d = spline_norm_2d*(std::pow(2.-q_2d,3) - 4.*pow(1.-q_2d,3));
+        }
+        else if( q_2d <= 2.){
+            kernel_2d = spline_norm_2d*(std::pow(2.-q_2d,3));
+        }
+        else{
+            kernel_2d = 0.0;
+        }
+        
 
-        if (q_1d >= 2.){kernel_1d += 0.0;}
-        if (q_1d<2. && q_1d >= 1. ){kernel_1d += spline_norm_1d*(2.-pow(2.-q_1d,3.));}
-        if (q_1d>=0 && q_1d <1.){kernel_1d += spline_norm_1d*(pow(2.-q_1d,3.)-4.*pow(1.-q_1d,3.));}
+        if (q_1d <= 1.){
+            kernel_1d = spline_norm_1d*(std::pow(2.-q_1d,3) - 4.*pow(1.-q_1d,3));
+        }
+        else if( q_1d <= 2.){
+            kernel_1d = spline_norm_1d*(std::pow(2.-q_1d,3));
+        }
+        else{
+            kernel_1d = 0.0;
+        }
+        //jacobian tau
         double arg = kernel_1d*kernel_2d;
+        if (this->coordinates == "hyperbolic")
+            arg = this->K*kernel_1d*kernel_2d/this->tau0;
         return arg;
     };
 
@@ -524,13 +610,27 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
     for (auto parton : thermalized_partons){
 
         //Creates the tensor associated to the parton
-        std::array<double,4> mom({parton.ptau, parton.outgoing_mom[0],
-                                 parton.outgoing_mom[1],
-                                 parton.peta});
+        std::array<double,4> mom;
+
+        //check for coordinate system
+        if(coordinates == "cartesian"){
+            mom[0] = std::sqrt(pow(parton.mass,2.) + pow(parton.outgoing_mom[0],2) + pow(parton.outgoing_mom[1],2) + pow(parton.outgoing_mom[2],2));
+            mom[1] = parton.outgoing_mom[0];
+            mom[2] = parton.outgoing_mom[1];
+            mom[3] = parton.outgoing_mom[2];
+        } else if (coordinates == "hyperbolic"){
+            mom[0] = parton.ptau;
+            mom[1] = parton.outgoing_mom[0];
+            mom[2] = parton.outgoing_mom[1];
+            mom[3] = parton.peta;
+        } else {
+            std::cout << "Unknown coordinate system" << std::endl;
+        }
+
         Mat4x4 parton_Tmunu;
         for (int mu=0; mu<4; ++mu)
         for (int nu=mu; nu<4; ++nu)
-            parton_Tmunu[mu][nu] = mom[mu]*mom[nu]/parton.ptau;
+            parton_Tmunu[mu][nu] = mom[mu]*mom[nu]/mom[0];
 
 
         //Creates the baryon current associated to the parton
@@ -606,7 +706,12 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
 
         double x0 = parton.x[0];
         double y0 = parton.x[1];
-        double eta0 = parton.eta_s;
+        double eta0;
+        if(coordinates == "hyperbolic"){
+            eta0 = parton.eta_s;
+        } else if (coordinates == "cartesian"){
+            eta0 = parton.x[2];
+        }
         Vec3 pos0({x0,y0,eta0});
 
         //Constraint search for a cube in a range 8*sigma_r and 8*sigma_eta
@@ -625,21 +730,21 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
                 for (int ieta=min_ieta; ieta<=max_ieta; ++ieta){
                     double eta = ieta*deta - Leta*.5;
                     Vec3 pos({x, y, eta});
-                    double smearing_factor = smearing_func_spline(pos0,pos)/tau0; //if using gaussian multiply by norm and divide barionic sector by  k
+                    double smearing_factor_spline = smearing_func_spline(pos0,pos)/K; //
                     double smearing_factor_gaussian  = norm*smearing_func(pos0,pos)/K;
-                    j0[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[0]/(parton.ptau);
-                    j1[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[1]/(parton.ptau);
-                    j2[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[2]/(parton.ptau);
-                    j3[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[3]/(parton.ptau);
+                    j0[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[0]/(mom[0]);
+                    j1[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[1]/(mom[0]);
+                    j2[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[2]/(mom[0]);
+                    j3[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[3]/(mom[0]);
                     rhob[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian;
-                    j0e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[0]/(parton.ptau);
-                    j1e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[1]/(parton.ptau);
-                    j2e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[2]/(parton.ptau);
-                    j3e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[3]/(parton.ptau);
-                    j0s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[0]/(parton.ptau);
-                    j1s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[1]/(parton.ptau);
-                    j2s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[2]/(parton.ptau);
-                    j3s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[3]/(parton.ptau);
+                    j0e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[0]/(mom[0]);
+                    j1e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[1]/(mom[0]);
+                    j2e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[2]/(mom[0]);
+                    j3e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[3]/(mom[0]);
+                    j0s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[0]/(mom[0]);
+                    j1s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[1]/(mom[0]);
+                    j2s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[2]/(mom[0]);
+                    j3s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[3]/(mom[0]);
                     for(int mu=0; mu<4; ++mu)
                     for(int nu=mu; nu<4; ++nu)
                         Tmunu[ix][iy][ieta][mu][nu] +=  K*parton_Tmunu[mu][nu]*smearing_factor_gaussian;
