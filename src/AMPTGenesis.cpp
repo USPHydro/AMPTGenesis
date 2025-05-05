@@ -191,6 +191,12 @@ void AMPTGenesis::write_vectors(Hydrodynamizer hydro, AMPTSmearer smearer){
 
     double dx = Lx/(nx-1.);
     double dy = Ly/(ny-1.);
+    double sqrt_mg;
+    if (coordinate_system == "cartesian"){
+        sqrt_mg = 1.;
+    } else if (coordinate_system == "hyperbolic"){
+        sqrt_mg = tau0;
+    }
     double deta = Leta/(neta-1.);
     double Nbar = 0;
 
@@ -238,13 +244,13 @@ void AMPTGenesis::write_vectors(Hydrodynamizer hydro, AMPTSmearer smearer){
                 final_q3s.push_back(0.);
                     continue;
                 }
-                double u0 = sqrt(1.+pow(hydro.TmunuOut[ix][iy][ieta].u[0],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[1],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[2],2.));
-                double rhob_ = smearer.j0[ix][iy][ieta]*u0 - smearer.j1[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]- smearer.j2[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
-                double rhoe_ = smearer.j0e[ix][iy][ieta]*u0-smearer.j1e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
-                double rhos_ = smearer.j0s[ix][iy][ieta]*u0-smearer.j1s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
+                double u0 = sqrt(1.+pow(hydro.TmunuOut[ix][iy][ieta].u[0],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[1],2.)+pow(sqrt_mg*hydro.TmunuOut[ix][iy][ieta].u[2],2.));
+                double rhob_ = smearer.j0[ix][iy][ieta]*u0 - smearer.j1[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]- smearer.j2[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-sqrt_mg*sqrt_mg*smearer.j3[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
+                double rhoe_ = smearer.j0e[ix][iy][ieta]*u0-smearer.j1e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-sqrt_mg*sqrt_mg*smearer.j3e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
+                double rhos_ = smearer.j0s[ix][iy][ieta]*u0-smearer.j1s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-sqrt_mg*sqrt_mg*smearer.j3s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2];
                 final_energy_density.push_back(hydro.TmunuOut[ix][iy][ieta].eps);
                 final_pressure.push_back((hydro.TmunuOut[ix][iy][ieta].eps)/3.); //ideal eos
-                final_ut.push_back(sqrt(1.+pow(hydro.TmunuOut[ix][iy][ieta].u[0],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[1],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[2],2.)));
+                final_ut.push_back(sqrt(1.+pow(hydro.TmunuOut[ix][iy][ieta].u[0],2.)+pow(hydro.TmunuOut[ix][iy][ieta].u[1],2.)+pow(sqrt_mg*hydro.TmunuOut[ix][iy][ieta].u[2],2.)));
                 final_ux.push_back(hydro.TmunuOut[ix][iy][ieta].u[0]);
                 final_uy.push_back(hydro.TmunuOut[ix][iy][ieta].u[1]);
                 final_un.push_back(hydro.TmunuOut[ix][iy][ieta].u[2]);
@@ -262,17 +268,17 @@ void AMPTGenesis::write_vectors(Hydrodynamizer hydro, AMPTSmearer smearer){
                 
                 Nbar += smearer.rhob[ix][iy][ieta]*dx*dy*tau0*tau0*deta;
                 //final_rhob.push_back(smearer.rhob[ix][iy][ieta]);
-                final_rhob.push_back(smearer.j0[ix][iy][ieta]*u0 - smearer.j1[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]- smearer.j2[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
+                final_rhob.push_back(smearer.j0[ix][iy][ieta]*u0 - smearer.j1[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]- smearer.j2[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-sqrt_mg*sqrt_mg*smearer.j3[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
                 final_q0.push_back(smearer.j0[ix][iy][ieta]-rhob_*u0);
                 final_q1.push_back(smearer.j1[ix][iy][ieta]-rhob_*hydro.TmunuOut[ix][iy][ieta].u[0]);
                 final_q2.push_back(smearer.j2[ix][iy][ieta]-rhob_*hydro.TmunuOut[ix][iy][ieta].u[1]);
                 final_q3.push_back(smearer.j3[ix][iy][ieta]-rhob_*hydro.TmunuOut[ix][iy][ieta].u[2]);
-                final_rhoe.push_back(smearer.j0e[ix][iy][ieta]*u0-smearer.j1e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
+                final_rhoe.push_back(smearer.j0e[ix][iy][ieta]*u0-smearer.j1e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-sqrt_mg*sqrt_mg*smearer.j3e[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
                 final_q0e.push_back(smearer.j0e[ix][iy][ieta]-rhoe_*u0);
                 final_q1e.push_back(smearer.j1e[ix][iy][ieta]-rhoe_*hydro.TmunuOut[ix][iy][ieta].u[0]);
                 final_q2e.push_back(smearer.j2e[ix][iy][ieta]-rhoe_*hydro.TmunuOut[ix][iy][ieta].u[1]);
                 final_q3e.push_back(smearer.j3e[ix][iy][ieta]-rhoe_*hydro.TmunuOut[ix][iy][ieta].u[2]);
-                final_rhos.push_back(smearer.j0s[ix][iy][ieta]*u0-smearer.j1s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-smearer.j3s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
+                final_rhos.push_back(smearer.j0s[ix][iy][ieta]*u0-smearer.j1s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[0]-smearer.j2s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[1]-sqrt_mg*sqrt_mg*smearer.j3s[ix][iy][ieta]*hydro.TmunuOut[ix][iy][ieta].u[2]);
                 final_q0s.push_back(smearer.j0s[ix][iy][ieta]-rhos_*u0);
                 final_q1s.push_back(smearer.j1s[ix][iy][ieta]-rhos_*hydro.TmunuOut[ix][iy][ieta].u[0]);
                 final_q2s.push_back(smearer.j2s[ix][iy][ieta]-rhos_*hydro.TmunuOut[ix][iy][ieta].u[1]);
