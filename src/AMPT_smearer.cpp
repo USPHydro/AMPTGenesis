@@ -412,11 +412,15 @@ void AMPTSmearer::propagate(double tau_f){
         if(t_m1 < tau_f){
             nform_below++;
         }
+        bool crossed = false;
         //formation time
         if ((ncols == 1) && (t_m1 <= tau_f)){
             nform_0coll++;
             thermalized_partons.push_back( free_streamer(parton_cols[ncols-1],tau_f) );
-        } else {
+            crossed = true;
+        } 
+        else {
+
             for (int icol=0; icol<ncols-1; ++icol){
                 if (coordinates == "cartesian"){
                     t_p1 = parton_cols[icol+1].t;
@@ -430,12 +434,19 @@ void AMPTSmearer::propagate(double tau_f){
                     std::cout << "Unknown coordinate system" << std::endl;
                     exit(1);
                 }
-                //if (t_p1 >= tau_f && t_form <= tau_f){
-                if (t_p1 >= tau_f ){
+                if (t_p1 >= tau_f && t_form <= tau_f){
+                //if (t_p1 >= tau_f ){
                     nform_coll++;
                     thermalized_partons.push_back( free_streamer(parton_cols[icol],tau_f) );
+                    crossed = true;
                     break;
                 }
+            }
+            //if not crossed, free stream the last collision
+            if (!crossed && parton_cols[ncols-1].t < tau_f && ncols != 1){
+                std::cout << "Last collision time: " << parton_cols[ncols-1].t << std::endl;
+                thermalized_partons.push_back( free_streamer(parton_cols[ncols-1],tau_f) );
+                crossed = true;
             }
         }
         //#ifdef PROGRESSBAR
@@ -594,7 +605,7 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
             kernel_1d = 0.0;
         }
         //jacobian tau
-        double arg = kernel_1d*kernel_2d;
+        double arg =  this->K*kernel_1d*kernel_2d;
         if (this->coordinates == "hyperbolic")
             arg = this->K*kernel_1d*kernel_2d/this->tau0;
         return arg;
@@ -642,53 +653,53 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
         if (!std::string(particle->ParticleClass()).compare("Quark")) {
             if (parton.pid == 1) {          // up quark
                 Q = 1. / 3.;
-                Qe = 2. / 3. * e_charge;
+                Qe = 2. / 3. ;
                 Qs = 0.0;
             } else if (parton.pid == -1) {  // anti-up quark
                 Q = -1. / 3.;
-                Qe = -2. / 3. * e_charge;
+                Qe = -2. / 3. ;
                 Qs = 0.0;
             } else if (parton.pid == 2) {   // down quark
                 Q = 1. / 3.;
-                Qe = -1. / 3. * e_charge;
+                Qe = -1. / 3. ;
                 Qs = 0.0;
             } else if (parton.pid == -2) {  // anti-down quark
                 Q = -1. / 3.;
-                Qe = 1. / 3. * e_charge;
+                Qe = 1. / 3. ;
                 Qs = 0.0;
             } else if (parton.pid == 3) {   // strange quark
                 Q = 1. / 3.;
-                Qe = -1. / 3. * e_charge;
-                Qs = 1.0;
+                Qe = -1. / 3. ;
+                Qs = -1.0;
             } else if (parton.pid == -3) {  // anti-strange quark
                 Q = -1. / 3.;
-                Qe = 1. / 3. * e_charge;
-                Qs = -1.0;
+                Qe = 1. / 3. ;
+                Qs = 1.0;
             } 
             // sometimes one or two heavier quarks appear in the initial condition
             else if (parton.pid == 4) {   // charm quark
                 Q = 1. / 3.;
-                Qe = 2. / 3. * e_charge;
+                Qe = 2. / 3. ;
                 Qs = 0.0;
             } else if (parton.pid == -4) {  // anti-charm quark
                 Q = -1. / 3.;
-                Qe = -2. / 3. * e_charge;
+                Qe = -2. / 3. ;
                 Qs = 0.0;
             } else if (parton.pid == 5) {   // bottom quark
                 Q = 1. / 3.;
-                Qe = -1. / 3. * e_charge;
+                Qe = -1. / 3. ;
                 Qs = 0.0;
             } else if (parton.pid == -5) {  // anti-bottom quark
                 Q = -1. / 3.;
-                Qe = 1. / 3. * e_charge;
+                Qe = 1. / 3. ;
                 Qs = 0.0;
             } else if (parton.pid == 6) {   // top quark
                 Q = 1. / 3.;
-                Qe = 2. / 3. * e_charge;
+                Qe = 2. / 3. ;
                 Qs = 0.0;
             } else if (parton.pid == -6) {  // anti-top quark
-                Q = 1. / 3.;
-                Qe = -2. / 3. * e_charge;
+                Q = -1. / 3.;
+                Qe = -2. / 3. ;
                 Qs = 0.0;
             }
 

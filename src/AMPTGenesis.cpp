@@ -1,6 +1,8 @@
 
 #include <string>
 #include <iostream>
+#include <iomanip>
+
 #include <fstream>
 
 
@@ -296,76 +298,84 @@ void AMPTGenesis::write_vectors(Hydrodynamizer hydro, AMPTSmearer smearer){
 
 void AMPTGenesis::output_to_file() {
     std::string path_out = output_file_path;
-    std::ofstream fout(path_out, std::ios::out);
-    if (!fout.is_open()) {
+    std::ofstream fout(path_out);
+    if (!fout) {
         std::cerr << "Error: Unable to open file " << path_out << std::endl;
         return;
     }
 
-    double dx = Lx / (nx - 1.);
-    double dy = Ly / (ny - 1.);
-    double deta = Leta / (neta - 1.);
+    double dx = Lx / (nx - 1.0);
+    double dy = Ly / (ny - 1.0);
+    double deta = Leta / (neta - 1.0);
 
-    // Header
-    fout << "# nx = " << nx << "\n"
-         << "# ny = " << ny << "\n"
-         << "# neta = " << neta << "\n"
-         << "# Lx = " << Lx << "\n"
-         << "# Ly = " << Ly << "\n"
-         << "# Leta = " << Leta << "\n"
-         << "# x y eta epsilon ux uy ueta trace pitautau pitaux pitauy pitaueta pixx pixy pixeta piyy piyeta pietaeta rhob qt qx qy qeta rhoe q0e q1e q2e q3e rhos q0s q1s q2s q3s\n";
+    double xmin = -Lx / 2.0;
+    double ymin = -Ly / 2.0;
+    double etamin = -Leta / 2.0;
 
-    // Use a string stream to buffer the output
+    // Write header in the format expected by the Python script
+    fout << "#0 " << dx << " " << dy << " " << deta
+         << " 0 " << xmin << " " << ymin << " " << etamin << "\n";
+
     std::ostringstream buffer;
-    buffer.precision(16);  // Set high precision for floating-point values
 
     for (int ix = 0; ix < nx; ++ix) {
-        double x = ix * dx - Lx * 0.5;
+        double x = ix * dx + xmin;
         for (int iy = 0; iy < ny; ++iy) {
-            double y = iy * dy - Ly * 0.5;
+            double y = iy * dy + ymin;
             for (int ieta = 0; ieta < neta; ++ieta) {
-                double eta = ieta * deta - Leta * 0.5;
-                const int idx = (ny * neta) * ix + neta * iy + ieta;
+                double eta = ieta * deta + etamin;
+                int idx = (ny * neta) * ix + neta * iy + ieta;
 
-                buffer << x << " " << y << " " << eta << " "
-                       << final_energy_density[idx] << " "
-                       << final_ux[idx] << " "
-                       << final_uy[idx] << " "
-                       << final_un[idx] << " "
-                       << -3. * final_Pi[idx] << " "
-                       << final_pitt[idx] << " "
-                       << final_pitx[idx] << " "
-                       << final_pity[idx] << " "
-                       << final_pitn[idx] << " "
-                       << final_pixx[idx] << " "
-                       << final_pixy[idx] << " "
-                       << final_pixn[idx] << " "
-                       << final_piyy[idx] << " "
-                       << final_piyn[idx] << " "
-                       << final_pinn[idx] << " "
-                       << final_rhob[idx] << " "
-                       << final_q0[idx] << " "
-                       << final_q1[idx] << " "
-                       << final_q2[idx] << " "
-                       << final_q3[idx] << " "
-                       << final_rhoe[idx] << " "
-                       << final_q0e[idx] << " "
-                       << final_q1e[idx] << " "
-                       << final_q2e[idx] << " "
-                       << final_q3e[idx] << " "
-                       << final_rhos[idx] << " "
-                       << final_q0s[idx] << " "
-                       << final_q1s[idx] << " "
-                       << final_q2s[idx] << " "
-                       << final_q3s[idx] << "\n";
+                double epsilon = final_energy_density[idx];
+                if (epsilon <= 0.1)
+                    continue;
+
+                double ux = final_ux[idx];
+                double uy = final_uy[idx];
+                double un = final_un[idx];
+                double trace = -3.0 * final_Pi[idx];
+
+                double pixx = final_pixx[idx];
+                double pixy = final_pixy[idx];
+                double pixn = final_pixn[idx];
+                double piyy = final_piyy[idx];
+                double piyn = final_piyn[idx];
+                double pinn = final_pinn[idx];
+
+                double rhob = final_rhob[idx];
+                double rhoe = final_rhoe[idx];
+                double rhos = final_rhos[idx];
+
+                buffer << std::fixed << std::setprecision(8)
+                       << x << " " << y << " " << eta << " "
+                       << epsilon << " "
+                       << rhob << " " << rhos << " " << rhoe << " "
+                       << ux << " " << uy << " " << un << " "
+                       << trace << " "
+                       << pixx << " " << pixy << " " << pixn << " "
+                       << piyy << " " << piyn << " " << pinn
+                       // Optional q vectors for future use:
+                       /*<< " " << final_q0[idx]
+                       << " " << final_q1[idx]
+                       << " " << final_q2[idx]
+                       << " " << final_q3[idx]
+                       << " " << final_q0e[idx]
+                       << " " << final_q1e[idx]
+                       << " " << final_q2e[idx]
+                       << " " << final_q3e[idx]
+                       << " " << final_q0s[idx]
+                       << " " << final_q1s[idx]
+                       << " " << final_q2s[idx]
+                       << " " << final_q3s[idx]*/
+                       << "\n";
             }
         }
     }
 
-    // Write the entire buffer to file at once
     fout << buffer.str();
     fout.close();
 }
+
 
 
 void AMPTGenesis::output_to_file_center(){
