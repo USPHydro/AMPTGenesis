@@ -743,22 +743,22 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
                     Vec3 pos({x, y, eta});
                     double smearing_factor_spline = smearing_func_spline(pos0,pos)/K; //
                     double smearing_factor_gaussian  = norm*smearing_func(pos0,pos)/K;
-                    j0[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[0]/(mom[0]);
-                    j1[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[1]/(mom[0]);
-                    j2[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[2]/(mom[0]);
-                    j3[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian*mom[3]/(mom[0]);
-                    rhob[ix][iy][ieta] += 1.*Q*smearing_factor_gaussian;
-                    j0e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[0]/(mom[0]);
-                    j1e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[1]/(mom[0]);
-                    j2e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[2]/(mom[0]);
-                    j3e[ix][iy][ieta] += 1.*Qe*smearing_factor_gaussian*mom[3]/(mom[0]);
-                    j0s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[0]/(mom[0]);
-                    j1s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[1]/(mom[0]);
-                    j2s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[2]/(mom[0]);
-                    j3s[ix][iy][ieta] += 1.*Qs*smearing_factor_gaussian*mom[3]/(mom[0]);
+                    j0[ix][iy][ieta] += 1.*Q*smearing_factor_spline*mom[0]/(mom[0]);
+                    j1[ix][iy][ieta] += 1.*Q*smearing_factor_spline*mom[1]/(mom[0]);
+                    j2[ix][iy][ieta] += 1.*Q*smearing_factor_spline*mom[2]/(mom[0]);
+                    j3[ix][iy][ieta] += 1.*Q*smearing_factor_spline*mom[3]/(mom[0]);
+                    rhob[ix][iy][ieta] += 1.*Q*smearing_factor_spline;
+                    j0e[ix][iy][ieta] += 1.*Qe*smearing_factor_spline*mom[0]/(mom[0]);
+                    j1e[ix][iy][ieta] += 1.*Qe*smearing_factor_spline*mom[1]/(mom[0]);
+                    j2e[ix][iy][ieta] += 1.*Qe*smearing_factor_spline*mom[2]/(mom[0]);
+                    j3e[ix][iy][ieta] += 1.*Qe*smearing_factor_spline*mom[3]/(mom[0]);
+                    j0s[ix][iy][ieta] += 1.*Qs*smearing_factor_spline*mom[0]/(mom[0]);
+                    j1s[ix][iy][ieta] += 1.*Qs*smearing_factor_spline*mom[1]/(mom[0]);
+                    j2s[ix][iy][ieta] += 1.*Qs*smearing_factor_spline*mom[2]/(mom[0]);
+                    j3s[ix][iy][ieta] += 1.*Qs*smearing_factor_spline*mom[3]/(mom[0]);
                     for(int mu=0; mu<4; ++mu)
                     for(int nu=mu; nu<4; ++nu)
-                        Tmunu[ix][iy][ieta][mu][nu] +=  K*parton_Tmunu[mu][nu]*smearing_factor_gaussian;
+                        Tmunu[ix][iy][ieta][mu][nu] +=  K*parton_Tmunu[mu][nu]*smearing_factor_spline;
                 }
             }
         }
