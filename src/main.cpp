@@ -4,6 +4,8 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <vector>
 
 #include "boost/program_options.hpp" //Needed for parsing input file
 
@@ -66,15 +68,30 @@ po::variables_map get_input_parameters(int ac, char* av[]){
     coordinates.add_options()
         ("coordinates.system", po::value<std::string>()->default_value("hyperbolic"), "coordinate system to use (cartesian or hyperbolic)");
 
+    po::options_description input_opts("Input options");
+    input_opts.add_options()
+        ("input.format", po::value<std::string>()->default_value("ampt"),
+            "initial-condition input format: 'ampt' (parton collision history) or 'smash' (OSCAR2013 SMASH_IC particle list)");
+
+    po::options_description output_opts("Output options");
+    output_opts.add_options()
+        ("output.output_diffusion", po::value<bool>()->default_value(false), "if true, append diffusion currents (qB, qS, qQ) to each output line")
+        ("output.raw_tmunu", po::value<bool>()->default_value(false), "if true, write the raw (un-diagonalized) contravariant T^{mu nu} components + lab-frame currents instead of the Landau-matched eps/u/pi output (cuts on T^{tau tau}; energy_density_cutoff defaults to 1e-6 in this mode unless set)")
+        ("output.energy_density_cutoff", po::value<double>()->default_value(0.15), "minimum energy density threshold for writing cells to output")
+        ("output.sigma_scan", po::value<std::string>()->default_value(""), "comma-separated sigma list; if set, run eccentricity-ONLY scan (read partons once, loop sigmas, no IC written)")
+        ("output.ecc_out", po::value<std::string>()->default_value("ecc_scan.txt"), "output file for the eccentricity scan")
+        ("output.ecc_analytic", po::value<bool>()->default_value(false), "if true (with sigma_scan), use the GRID-FREE analytic eccentricity (much faster)")
+        ("output.ecc_momentum", po::value<bool>()->default_value(false), "if true, write spatial eps (T^tt & Landau) and momentum anisotropy eps_p (ideal/full, mid/int) at the config sigma");
+
 
     po::options_description cmdline_options;        //List of inputs acceptable in the comand line
     po::options_description config_file_options;    //List of inputs acceptable in the config file
     po::options_description visible;                //List of inputs visible in the help menu
     po::positional_options_description pos_args;    //Configuration of positional arguments
 
-    cmdline_options.add(generic).add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius).add(coordinates);
-    config_file_options.add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius).add(coordinates);
-    visible.add(generic).add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius).add(coordinates);
+    cmdline_options.add(generic).add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius).add(coordinates).add(input_opts).add(output_opts);
+    config_file_options.add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius).add(coordinates).add(input_opts).add(output_opts);
+    visible.add(generic).add(npoints).add(side_size).add(smearing).add(paths).add(sample_radius).add(coordinates).add(input_opts).add(output_opts);
 
     pos_args.add("genesis-config",1);
     pos_args.add("output_path",1);
@@ -124,10 +141,49 @@ int main(int argc, char** argv){
   genesis_ptr->rxy = vm["sample_radius.xy"].as<double>(); 
   genesis_ptr->reta = vm["sample_radius.eta"].as<double>();
   genesis_ptr->coordinate_system = vm["coordinates.system"].as<std::string>();
+  genesis_ptr->input_format = vm["input.format"].as<std::string>();
+  genesis_ptr->output_diffusion = vm["output.output_diffusion"].as<bool>();
+  genesis_ptr->output_raw_tmunu = vm["output.raw_tmunu"].as<bool>();
+  genesis_ptr->energy_density_cutoff = vm["output.energy_density_cutoff"].as<double>();
+  // Raw-T^{mu nu} mode keys the cutoff on T^{tau tau} only to drop empty cells; the
+  // Landau e/p/pi filtering does not apply, so use a small value (keep every non-empty
+  // cell) unless the user set energy_density_cutoff explicitly.
+  if (genesis_ptr->output_raw_tmunu && vm["output.energy_density_cutoff"].defaulted()) {
+    genesis_ptr->energy_density_cutoff = 1e-6;
+    std::cout << "[INFO]: raw_tmunu mode: energy_density_cutoff defaulted to "
+              << genesis_ptr->energy_density_cutoff << " (drop empty cells only)\n";
+  }
+
+  // Spatial-vs-momentum anisotropy comparison (grid, single sigma)
+  if (vm["output.ecc_momentum"].as<bool>()) {
+    genesis_ptr->run_ecc_momentum(vm["output.ecc_out"].as<std::string>());
+    std::cout << "Momentum-anisotropy comparison stored in: " << vm["output.ecc_out"].as<std::string>() << "\n";
+    return 0;
+  }
+
+  // Fast eccentricity-only sigma scan: if output.sigma_scan is set, read partons once
+  // and loop over the comma-separated sigma list, writing only eccentricities.
+  std::string sigma_scan = vm["output.sigma_scan"].as<std::string>();
+  if (!sigma_scan.empty()) {
+    std::vector<double> sigmas;
+    std::stringstream ss(sigma_scan); std::string tok;
+    while (std::getline(ss, tok, ',')) { if (!tok.empty()) sigmas.push_back(std::stod(tok)); }
+    std::string ecc_out = vm["output.ecc_out"].as<std::string>();
+    if (vm["output.ecc_analytic"].as<bool>())
+      genesis_ptr->run_ecc_analytic(sigmas, ecc_out);   // grid-free
+    else
+      genesis_ptr->run_ecc_scan(sigmas, ecc_out);       // grid-based
+    std::cout << "Eccentricity scan stored in: " << ecc_out << "\n";
+    return 0;
+  }
 
   genesis_ptr->run_genesis();
-  std::cout << "Saving output to file...\n";
-  genesis_ptr->output_to_file();
+  // In raw-T^{mu nu} mode run_genesis already wrote the file (it holds no
+  // diagonalized vectors to re-dump), so only re-dump in the standard path.
+  if (!genesis_ptr->output_raw_tmunu) {
+    std::cout << "Saving output to file...\n";
+    genesis_ptr->output_to_file();
+  }
   std::cout << "Output stored in: " << genesis_ptr->output_file_path << "\n";
   return 0;
   

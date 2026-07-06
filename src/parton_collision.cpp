@@ -24,6 +24,14 @@ public:
     double tau;
     double eta_s;
 
+    // Explicit conserved charges. Used by the SMASH input path, where the
+    // OSCAR2013 file lists baryon number, electric charge and strangeness per
+    // hadron. When use_stored_charges is false (AMPT default) fill_Tmunu derives
+    // the charges from the parton PID instead. Carried through free-streaming.
+    bool   use_stored_charges = false;
+    double bcharge = 0.; ///< baryon number
+    double echarge = 0.; ///< electric charge
+    double scharge = 0.; ///< strangeness
 
     PartonCollision(int pid, double mass, double time, Vec3 position,
                     Vec3 incoming_momentum, Vec3 outgoing_momentum);
@@ -55,6 +63,8 @@ public:
     double Y;    ///< Particle rapidity
     double ptau; ///< zeroth component of the momentum in hyperbolic coordinates
     double peta; ///< third component of the momentum in hyperbolic coordinates
+    // conserved charges (use_stored_charges, bcharge/echarge/scharge) are
+    // inherited from PartonCollision so they survive free-streaming.
     PartonThermalized(int pid, double mass, double time, Vec3 position,
                         Vec3 momentum);
     ~PartonThermalized() =  default;

@@ -27,6 +27,7 @@ class AMPTSmearer
 {
 private:
     std::string coordinates;
+    std::string results_path;   ///< input folder (AMPT) or SMASH OSCAR file/dir
     svec cols_hist;
     svec init_parton;
 
@@ -40,10 +41,10 @@ private:
     int npartons;       ///< Number of partons in the event
     int ncollisions;    ///< Number of parton-parton collision (do not confuse with Ncoll, the number of nucleon-nucleon collisions)
     std::vector<std::vector<PartonCollision>> parton_histories; ///< Collision history of each parton
-    std::vector<PartonThermalized> thermalized_partons;
     const double e_charge = 0.30282212077; ///< Elementary charge in natural units (sqrt(4*pi*alpha))
 
 public:
+    std::vector<PartonThermalized> thermalized_partons;  // public: read by analytic ecc
     double impact_parameter;  ///< Impact parameter of the event
                              /// See https://arxiv.org/pdf/1910.08004.pdf
                              /// These values are outputted by AMPT
@@ -83,6 +84,10 @@ public:
     ~AMPTSmearer();
 
     void parse_history();
+    // Read a SMASH OSCAR2013 "SMASH_IC" particle list and fill thermalized_partons
+    // directly. The particles are already on the IC hypersurface, so there is no
+    // free-streaming step (no parse_history()/propagate()).
+    void parse_smash();
     void propagate(double tau_f);
     void fill_Tmunu(double sr,double seta);
 
@@ -152,33 +157,10 @@ coordinates(coordinate_system)
                                 sigma_r=sigma_r_; sigma_eta = sigma_eta_; tau0=tau0_; rxy=rxy_; reta = reta_;
     K = Kin;
 
-    cols_hist = readlines(results_path+"/parton-collisionsHistory.dat");
-    init_parton = readlines(results_path+"/parton-initial-afterPropagation.dat");
-
-    std::string ampt_header = readlines(results_path+"/ampt.dat")[0];
-    impact_parameter = atof(split(ampt_header,' ')[3].data());
-    NpartTarg = atof(split(ampt_header,' ')[4].data());
-    NpartProj = atof(split(ampt_header,' ')[5].data());
-    Npart = NpartTarg+NpartProj;
-    NpartTargElastic = atof(split(ampt_header,' ')[6].data());
-    NpartProjElastic = atof(split(ampt_header,' ')[8].data());
-
-    get_dnde(results_path);
-
-
-    std::cout << "b..................: "<< impact_parameter << " fm"<<std::endl;
-    std::cout << "Npart..............: "<< Npart << std::endl;
-    std::cout << "NpartTarg..........: "<< NpartTarg << std::endl;
-    std::cout << "NpartProj..........: "<< NpartProj << std::endl;
-    std::cout << "NpartTargElastic...: "<< NpartTargElastic << std::endl;
-    std::cout << "NpartProjElastic...: "<< NpartProjElastic << std::endl;
-    std::cout << "refmult1...........: "<< refmult1 << std::endl;
-    std::cout << "refmult2...........: "<< refmult2 << std::endl;
-    std::cout << "refmult3...........: "<< refmult3 << std::endl;
-    std::cout << "Fwd1...............: "<< Fwd1 << std::endl;
-    std::cout << "Fwd2...............: "<< Fwd2 << std::endl;
-    std::cout << "Fwd3...............: "<< Fwd3 << std::endl;
-    std::cout << "FwdAll.............: "<< FwdAll << std::endl;
+    // The AMPT text files are read in parse_history(); the SMASH input
+    // path (parse_smash) never touches them. Storing the path lets one
+    // constructor serve both input formats.
+    this->results_path = results_path;
 }
 
 void AMPTSmearer::get_dnde(std::string results_path){
@@ -237,6 +219,22 @@ AMPTSmearer::~AMPTSmearer(){}
 
 ///\brief Creates the history of collision of each parton
 void AMPTSmearer::parse_history(){
+    // Read the AMPT text output (deferred from the constructor so the SMASH path
+    // can construct the smearer without these files being present).
+    cols_hist   = readlines(results_path+"/parton-collisionsHistory.dat");
+    init_parton = readlines(results_path+"/parton-initial-afterPropagation.dat");
+
+    std::string ampt_header = readlines(results_path+"/ampt.dat")[0];
+    impact_parameter = atof(split(ampt_header,' ')[3].data());
+    NpartTarg = atof(split(ampt_header,' ')[4].data());
+    NpartProj = atof(split(ampt_header,' ')[5].data());
+    Npart = NpartTarg+NpartProj;
+    NpartTargElastic = atof(split(ampt_header,' ')[6].data());
+    NpartProjElastic = atof(split(ampt_header,' ')[8].data());
+
+    std::cout << "b = " << impact_parameter << " fm, Npart = " << Npart
+              << " (targ " << NpartTarg << ", proj " << NpartProj << ")" << std::endl;
+
     npartons = atoi( split(cols_hist[0],' ')[1].data() );
     ncollisions = (cols_hist.size()-1)/5;
 
@@ -321,6 +319,71 @@ void AMPTSmearer::parse_history(){
 
 }
 
+///\brief Read a SMASH OSCAR2013 "SMASH_IC" particle list into parton_histories.
+///
+/// The OSCAR2013Extended SMASH_IC format lists one hadron per data line at its
+/// formation/last-interaction point:
+///   t x y z mass p0 px py pz pdg ID charge ncoll form_time xsecfac
+///   proc_id_origin proc_type_origin time_last_coll pdg_mother1 pdg_mother2
+///   baryon_number strangeness
+/// (units: fm for t,x,y,z; GeV for mass,p0..pz). Lines beginning with '#' are
+/// comments / event markers.
+///
+/// Each hadron becomes a
+/// single-entry collision history (its formation point). Everything downstream
+/// is IDENTICAL to AMPT — propagate(tau0) free-streams every particle formed
+/// before tau0 up to tau0 (and drops those formed later), then fill_Tmunu
+/// deposits it. The only SMASH-specific bit is that the conserved charges
+/// (B, Q, S) are taken verbatim from the file instead of derived from the PID.
+void AMPTSmearer::parse_smash(){
+    // Accept either a direct ".oscar" file or a directory holding SMASH_IC.oscar.
+    std::string path = results_path;
+    if (path.size() < 6 || path.substr(path.size()-6) != ".oscar")
+        path += "/SMASH_IC.oscar";
+
+    svec lines = readlines(path);
+    if (lines.empty()){
+        std::cerr << "[ERROR]: SMASH IC file empty or not found: " << path << std::endl;
+        exit(1);
+    }
+
+    // Charges live in the last three named columns; require a full row.
+    const size_t NCOL = 22;
+    int nskip = 0;
+    for (const std::string& line : lines){
+        if (line.empty() || line[0] == '#') continue;
+        svec f = split(line, ' ');
+        if (f.size() < NCOL){ ++nskip; continue; }
+
+        double t    = atof(f[0].data());
+        Vec3   pos({ atof(f[1].data()), atof(f[2].data()), atof(f[3].data()) });
+        double mass = atof(f[4].data());
+        Vec3   mom({ atof(f[6].data()), atof(f[7].data()), atof(f[8].data()) });
+        int    pid  = atoi(f[9].data());
+
+        // One-entry collision history = the formation point. incoming_mom is
+        // unused by free_streamer; outgoing_mom carries the velocity.
+        PartonCollision pc(pid, mass, t, pos, Vec3({0,0,0}), mom);
+        pc.use_stored_charges = true;
+        pc.echarge = atof(f[11].data());  // electric charge
+        pc.bcharge = atof(f[20].data());  // baryon number
+        pc.scharge = atof(f[21].data());  // strangeness
+        parton_histories.push_back(std::vector<PartonCollision>{pc});
+
+        net_p[1] += mom[0];
+        net_p[2] += mom[1];
+        net_p[3] += mom[2];
+        net_p[0] += sqrt(mass*mass + mom[0]*mom[0] + mom[1]*mom[1] + mom[2]*mom[2]);
+    }
+    npartons = (int)parton_histories.size();
+
+    // These AMPT-event quantities are undefined for a SMASH IC; keep them at 0.
+    impact_parameter = 0.; Npart = 0.; NpartTarg = 0.; NpartProj = 0.;
+
+    std::cout << "[INFO]: Read " << npartons << " SMASH IC particles from " << path
+              << " (skipped " << nskip << " malformed lines)" << std::endl;
+}
+
 ///\brief propagates a parton to a time tau_f
 ///\param last_collision the last collision of the particle
 ///\param tau_f the time to which we desire to free-stream the particle
@@ -342,14 +405,20 @@ PartonThermalized AMPTSmearer::free_streamer(PartonCollision last_collision, dou
                      (double) (p[1]/mass/gamma_l),
                      (double) (p[2]/mass/gamma_l)});
 
-
-    //Check consistency on computting velocity
-    if ( fabs(1./sqrt(1-pow(vel[0],2) - pow(vel[1],2) - pow(vel[2],2) ) - gamma_l )/gamma_l > 1.E-7){
-        std::cout <<"Inconsistency in velocity: " << 1./sqrt(1-pow(vel[0],2) - pow(vel[1],2) - pow(vel[2],2) ) - gamma_l << std::endl;
-        std::cout << "v = "<< pow(vel[0],2) + pow(vel[1],2) + pow(vel[2],2)
-                  << ", gamma = "<< gamma_l << std::endl;
-        std::cout << "Expected gamma = " << 1./sqrt(1-pow(vel[0],2) - pow(vel[1],2) - pow(vel[2],2) ) << std::endl;
-
+    // For ultra-relativistic partons (gamma >> 1) floating-point cancellation in
+    // 1 - v^2 makes |v|^2 tip just above 1. Clamp |v|^2 < 1 before the check.
+    // A tiny excess is harmless rounding; a large one means the input mass or
+    // momentum is bad, so warn only for those really problematic cases.
+    double v2 = pow(vel[0],2) + pow(vel[1],2) + pow(vel[2],2);
+    if (v2 >= 1.0) {
+        const double v2_tol = 1e-9;  // rounding noise stays below this
+        if (v2 - 1.0 > v2_tol)
+            std::cout << "[WARN] superluminal parton (pid " << last_collision.pid
+                      << ", mass " << mass << "): |v|^2 = " << v2
+                      << " clamped to 1" << std::endl;
+        double inv_v = 1.0/sqrt(v2);
+        vel[0] *= inv_v; vel[1] *= inv_v; vel[2] *= inv_v;
+        v2 = 1.0 - 1e-15;
     }
 
     double pos_init = x0[2]-vel[2]*t0; //Position back-propagated to t = 0 - This quantity appears many times
@@ -376,7 +445,13 @@ PartonThermalized AMPTSmearer::free_streamer(PartonCollision last_collision, dou
     final_pos[1] = x0[1] + vel[1]*(tf-t0);
     final_pos[2] = x0[2] + vel[2]*(tf-t0);
 
-    return PartonThermalized(last_collision.pid, mass, tf, final_pos, p);
+    PartonThermalized result(last_collision.pid, mass, tf, final_pos, p);
+    // Carry the conserved charges (set by the SMASH path) through free-streaming.
+    result.use_stored_charges = last_collision.use_stored_charges;
+    result.bcharge = last_collision.bcharge;
+    result.echarge = last_collision.echarge;
+    result.scharge = last_collision.scharge;
+    return result;
 }
 
 ///\brief Propagates all partons to
@@ -442,9 +517,11 @@ void AMPTSmearer::propagate(double tau_f){
                     break;
                 }
             }
+            double t_last = (coordinates=="hyperbolic") ? parton_cols[ncols-1].tau
+                                                        : parton_cols[ncols-1].t;
             //if not crossed, free stream the last collision
-            if (!crossed && parton_cols[ncols-1].t < tau_f && ncols != 1){
-                std::cout << "Last collision time: " << parton_cols[ncols-1].t << std::endl;
+            if (!crossed && t_last < tau_f && ncols != 1){
+                // std::cout << "Last collision time: " << t_last << std::endl;  // silenced (per-parton)
                 thermalized_partons.push_back( free_streamer(parton_cols[ncols-1],tau_f) );
                 crossed = true;
             }
@@ -499,14 +576,8 @@ void AMPTSmearer::propagate(double tau_f){
     }
     fdebug->Write();
     fdebug->Close();
-    std::cout<<"Largest x = "<< max_x << std::endl;
-    std::cout<<"Largest y = "<< max_y << std::endl;
-    std::cout<<"Largest eta_s = "<< max_eta_s << std::endl;
-    std::cout<<"Largest abs_p = "<< max_p << std::endl;
-    std::cout<<"Largest z = "<< max_z << std::endl;
-    std::cout<<"Largest px = "<< max_px << std::endl;
-    std::cout<<"Largest py = "<< max_py << std::endl;
-    std::cout<<"Largest pz = "<< max_pz << std::endl;
+    // silenced per-event debug maxima:
+    // std::cout<<"Largest x = "<< max_x << std::endl;  ... (x,y,eta_s,p,z,px,py,pz)
     return;
 
 }
@@ -644,12 +715,17 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
             parton_Tmunu[mu][nu] = mom[mu]*mom[nu]/mom[0];
 
 
-        //Creates the baryon current associated to the parton
-        TParticlePDG* particle = db.GetParticle(parton.pid);
-
+        //Conserved charges of the parton: Q = baryon number, Qe = electric, Qs = strangeness
         double Q = 0.;
         double Qe = 0.;
         double Qs = 0.;
+        if (parton.use_stored_charges) {
+            // SMASH hadrons carry B, Q, S explicitly in the OSCAR file.
+            Q  = parton.bcharge;
+            Qe = parton.echarge;
+            Qs = parton.scharge;
+        } else {
+        TParticlePDG* particle = db.GetParticle(parton.pid);
         if (!std::string(particle->ParticleClass()).compare("Quark")) {
             if (parton.pid == 1) {          // up quark
                 Q = 1. / 3.;
@@ -705,9 +781,10 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
 
             // Add more else-if clauses for other quarks and antiquarks as needed
         }
+        }  // end AMPT quark-charge branch (use_stored_charges == false)
 
 
-        
+
         if(abs(parton.pid) == 1){dw +=1.;};
         if(abs(parton.pid) == 2){up +=1.;};
         if(abs(parton.pid) == 3){st +=1.;};
@@ -730,8 +807,8 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
         double min_iy = std::max<double>(floor( (y0-rxy*2.*_sigma_r+Ly/2)/dy ), .0);
         double min_ieta = std::max<double>(floor( (eta0-reta*2.*_sigma_eta+Leta/2)/deta ), .0);
 
-        double max_ix = std::min<double>(ceil( (x0+rxy*3.*_sigma_r+Lx/2)/dx ), nx-1);
-        double max_iy = std::min<double>(ceil( (y0+rxy*3.*_sigma_r+Ly/2)/dy ), ny-1);
+        double max_ix = std::min<double>(ceil( (x0+rxy*2.*_sigma_r+Lx/2)/dx ), nx-1);
+        double max_iy = std::min<double>(ceil( (y0+rxy*2.*_sigma_r+Ly/2)/dy ), ny-1);
         double max_ieta = std::min<double>(ceil( (eta0+reta*2.*_sigma_eta+Leta/2)/deta), neta-1);
 
         for (int ix=min_ix; ix<=max_ix; ++ix){
