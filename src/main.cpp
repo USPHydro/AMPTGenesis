@@ -45,6 +45,7 @@ po::variables_map get_input_parameters(int ac, char* av[]){
         ("smearing.sigma_r,sigma_r", po::value<double>()->default_value(.6), "radius in transverse direction over which the energy-momentum of the parton will be scattered.")
         ("smearing.sigma_eta,sigma_eta", po::value<double>()->default_value(.6), "length in longitudinal direction over which the energy-momentum of the parton will be scattered.")
         ("smearing.tau0,tau0", po::value<double>()->default_value(.4), "the time where we will intercept AMPT parton evolution and smear parton positions")
+        ("smearing.backpropagate", po::value<bool>()->default_value(false), "if true, partons that form after tau0 are free-streamed BACKWARD onto the tau0 surface (energy-conserving, original behaviour); if false they are dropped")
     ;
 
     po::options_description paths("Smearing parton parameters");
@@ -129,6 +130,7 @@ int main(int argc, char** argv){
   genesis_ptr->output_file_path = vm["paths.output"].as<std::string>();
   genesis_ptr->input_folder_path = vm["paths.input"].as<std::string>() ;
   genesis_ptr->tau0 = vm["smearing.tau0"].as<double>();
+  genesis_ptr->backpropagate = vm["smearing.backpropagate"].as<bool>();
   genesis_ptr->smearing_k = vm["smearing.K"].as<double>();
   genesis_ptr->nx = vm["npoints.x"].as<int>(); 
   genesis_ptr->ny = vm["npoints.y"].as<int>(); 

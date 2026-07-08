@@ -73,6 +73,8 @@ class AMPTGenesis
         double energy_density_cutoff;
         int nx; int ny; int neta; double Lx;double Ly; double Leta;
                         double sigma_r; double sigma_eta; double tau0; double rxy; double reta;
+        // back-propagate late-forming partons (formation tau > tau0) onto the tau0 surface
+        bool backpropagate = false;
 
         void run_genesis();
 
@@ -873,6 +875,7 @@ void AMPTGenesis::run_genesis(){
         exit(1);
     }
     std::cout << "[INFO]: Input parsed (" << input_format << ")" << std::endl << std::flush;
+    smearer.backpropagate = backpropagate;
     smearer.propagate(tau0);
     std::cout << "[INFO]: Finished free-streaming step" << std::endl << std::flush;
     smearer.fill_Tmunu(sigma_r,sigma_eta);

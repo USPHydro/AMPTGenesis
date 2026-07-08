@@ -81,6 +81,10 @@ public:
     AMPTSmearer(std::string results_path, double K,int nx_, int ny_, int neta_, double Lx_,double Ly_, double Leta_,
                                 double sigma_r_, double sigma_eta_, double tau0_, double rxy_, double reta_, std::string coordinate_system);
     double K;
+    // If true, partons whose formation proper-time exceeds tau0 are free-streamed
+    // BACKWARD onto the tau0 surface (energy-conserving; the original behaviour).
+    // If false (default), such late-forming partons are dropped from the IC.
+    bool backpropagate = false;
     ~AMPTSmearer();
 
     void parse_history();
@@ -461,6 +465,7 @@ void AMPTSmearer::propagate(double tau_f){
     int nform_below = 0;
     int nform_0coll = 0;
     int nform_coll = 0;
+    int nback = 0;   // late-forming partons (formation tau > tau0) recovered by back-propagation
     double max_eta_s = 0.;
     double max_x = 0.;
     double max_y = 0.;
@@ -488,8 +493,9 @@ void AMPTSmearer::propagate(double tau_f){
             nform_below++;
         }
         bool crossed = false;
-        //formation time
-        if ((ncols == 1) && (t_m1 <= tau_f)){
+        //formation time (backpropagate=true removes the t_form<=tau_f gate, so a
+        // late-forming parton is free-streamed backward onto the tau0 surface)
+        if ((ncols == 1) && (backpropagate || t_m1 <= tau_f)){
             nform_0coll++;
             thermalized_partons.push_back( free_streamer(parton_cols[ncols-1],tau_f) );
             crossed = true;
@@ -509,8 +515,7 @@ void AMPTSmearer::propagate(double tau_f){
                     std::cout << "Unknown coordinate system" << std::endl;
                     exit(1);
                 }
-                if (t_p1 >= tau_f && t_form <= tau_f){
-                //if (t_p1 >= tau_f ){
+                if (t_p1 >= tau_f && (backpropagate || t_form <= tau_f)){
                     nform_coll++;
                     thermalized_partons.push_back( free_streamer(parton_cols[icol],tau_f) );
                     crossed = true;
@@ -526,6 +531,7 @@ void AMPTSmearer::propagate(double tau_f){
                 crossed = true;
             }
         }
+        if (crossed && t_m1 > tau_f) ++nback;   // recovered a late-forming parton
         //#ifdef PROGRESSBAR
         //pb.step();
         //#endif
@@ -533,6 +539,8 @@ void AMPTSmearer::propagate(double tau_f){
     std::cout << "Number of partons below tau_f: " << nform_below << std::endl;
     std::cout << "Number of partons with 0 collisions accepted: " << nform_0coll << std::endl;
     std::cout << "Number of partons with collisions accepted: " << nform_coll << std::endl;
+    std::cout << "Back-propagate late partons: " << (backpropagate ? "true" : "false")
+              << "  (recovered " << nback << " partons with formation tau > tau0)" << std::endl;
     std::cout << "tau_f = " << tau_f << std::endl;
     TFile* fdebug = new TFile("debug.root","recreate");
     TH1D* heta =  new TH1D("heta","Parton dN/deta",100,-5,5);
@@ -542,9 +550,11 @@ void AMPTSmearer::propagate(double tau_f){
     TH2D* hY_vs_eta_s =  new TH2D("hY_vs_eta_s","Parton dN/deta",200,-10,10,200,-10,10);
     TH2D* ht_vs_z =  new TH2D("hz_vs_t","Parton dN/deta",2000,-100,100,2000,0,100);
     std::cout << "Number of thermalized partons: " << thermalized_partons.size() << std::endl;
+    double E_kept = 0.;
     for (auto p : thermalized_partons){
 
         double abs_p = sqrt( pow(p.outgoing_mom[0],2) + pow(p.outgoing_mom[1],2) + pow(p.outgoing_mom[2],2));
+        E_kept += sqrt(p.mass*p.mass + abs_p*abs_p);
         double pz = p.outgoing_mom[2];
         double px = p.outgoing_mom[0];
         double py = p.outgoing_mom[1];
@@ -664,7 +674,7 @@ void AMPTSmearer::fill_Tmunu(double sr,double seta){
         else{
             kernel_2d = 0.0;
         }
-        
+
 
         if (q_1d <= 1.){
             kernel_1d = spline_norm_1d*(std::pow(2.-q_1d,3) - 4.*pow(1.-q_1d,3));
